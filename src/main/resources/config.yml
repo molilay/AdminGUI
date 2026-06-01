@@ -1,0 +1,124 @@
+# AdvancedModerator GUI Configuration
+
+reasons:
+  kick:
+    - "Нарушение правил"
+    - "Оскорбление"
+    - "Гриферство"
+    - "Реклама"
+    - "Спам"
+  ban:
+    - "Гриферство"
+    - "Читерство"
+    - "Оскорбления"
+    - "ДДоС-атака"
+    - "Обход бана"
+  warn:
+    - "Нарушение правил"
+    - "Оскорбление"
+    - "Спам"
+    - "Капс"
+    - "Неадекватное поведение"
+
+durations:
+  tempban:
+    - "1ч"
+    - "6ч"
+    - "1д"
+    - "3д"
+    - "7д"
+    - "14д"
+    - "30д"
+  tempgroup:
+    - "1ч"
+    - "1д"
+    - "7д"
+    - "14д"
+    - "30д"
+  mute:
+    - "10м"
+    - "1ч"
+    - "6ч"
+    - "1д"
+    - "7д"
+
+messages:
+  prefix: "&8[&cAM&8]"
+  no-permission: "&cУ вас нет прав на это действие."
+  player-not-found: "&cИгрок не найден."
+  frozen: "&c❄ Вы заморожены! Напишите модераторам в ЛС для разблокировки."
+  unfrozen: "&a✓ Вы разморожены."
+  banned: "&cВы были забанены. Причина: %reason%"
+  kicked: "&cВы были кикнуты. Причина: %reason%"
+  muted: "&cВы замьючены. Причина: %reason%"
+  unmuted: "&aВы размьючены."
+  warned: "&c⚠ Вы получили предупреждение. Причина: %reason% (%count%/%max%)"
+  freeze-others: "&a✓ Игрок %player% заморожен."
+  unfreeze-others: "&a✓ Игрок %player% разморожен."
+  inventory-cleared: "&a✓ Инвентарь игрока %player% очищен."
+  group-changed: "&a✓ Группа игрока %player% изменена на %group%."
+  group-created: "&a✓ Группа %group% создана."
+  group-deleted: "&c✓ Группа %group% удалена."
+  custom-reason-prompt: "&eВведите причину в чат (30 сек):"
+  custom-duration-prompt: "&eВведите длительность (например: 1ч, 7д, 30д):"
+  alts-found: "&eНайдены альты игрока %player%: &f%alts%"
+  no-alts: "&eАльтов не найдено."
+  staff-join: "&8[&bSC&8] &7%player% &aзашёл в игру"
+  staff-leave: "&8[&bSC&8] &7%player% &cвышел из игры"
+  broadcast-ban: "&c%player% забанен. Причина: %reason%"
+  broadcast-kick: "&6%player% кикнут. Причина: %reason%"
+  broadcast-tempban: "&c%player% временно забанен. Причина: %reason%"
+
+freeze:
+  blind-effect: true
+  slow-effect: true
+  disable-chat: true
+  disable-commands: true
+  disable-interact: true
+
+gui:
+  title-main: "&8≡ AdvancedModerator"
+  title-players-online: "&8Игроки онлайн"
+  title-players-offline: "&8Оффлайн игроки"
+  title-player-card: "&8Карточка: %player%"
+  title-groups: "&8Управление ролями"
+  title-group-editor: "&8Редактор: %group%"
+  title-logs: "&8Логи наказаний"
+  title-ban-duration: "&8Выберите срок"
+  title-reason: "&8Выберите причину"
+  title-confirm: "&8Подтверждение"
+  title-assign-group: "&8Назначить группу"
+  title-inventory-view: "&8Инвентарь: %player%"
+  title-ender-chest: "&8Эндер-сундук: %player%"
+  title-active-bans: "&8Активные баны"
+  title-player-history: "&8История: %player%"
+  title-snapshots: "&8Снапшоты: %player%"
+  sound-enabled: true
+
+broadcast:
+  ban: true
+  kick: true
+  tempban: true
+  warn: false
+
+database:
+  type: sqlite # sqlite или mysql
+  mysql:
+    host: localhost
+    port: 3306
+    database: adminmoderator
+    username: root
+    password: ""
+
+discord:
+  webhook-url: "" # Оставьте пустым для отключения
+
+warn:
+  max-warns: 3
+  auto-ban: true
+  fine: 50.0
+
+sounds:
+  click: "UI_BUTTON_CLICK"
+  success: "ENTITY_PLAYER_LEVELUP"
+  error: "ENTITY_VILLAGER_NO"

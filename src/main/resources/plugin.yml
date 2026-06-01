@@ -1,0 +1,104 @@
+name: AdvancedModeratorGUI
+version: 2.0.0
+main: me.admin.gui.AdvancedModeratorGUI
+api-version: '1.26'
+depend: [LuckPerms]
+softdepend: [Vault]
+
+commands:
+  mod:
+    description: Открыть меню модератора
+    aliases: [apanel, adminpanel]
+    permission: amgui.use
+  sc:
+    description: StaffChat — чат модераторов
+    aliases: [staffchat]
+    permission: amgui.staffchat
+  amgui:
+    description: Управление плагином
+    aliases: [am, admintool]
+    permission: amgui.admin
+
+permissions:
+  amgui.*:
+    description: Полный доступ
+    default: op
+    children:
+      amgui.use: true
+      amgui.admin: true
+      amgui.player: true
+      amgui.ban: true
+      amgui.freeze: true
+      amgui.groups: true
+      amgui.groups.edit: true
+      amgui.groups.assign: true
+      amgui.viewip: true
+      amgui.inventory.view: true
+      amgui.inventory.edit: true
+      amgui.logs: true
+      amgui.staffchat: true
+      amgui.warn: true
+      amgui.mute: true
+      amgui.alts: true
+      amgui.rollback: true
+      amgui.teleport: true
+      amgui.notes: true
+  amgui.use:
+    description: Доступ к главному меню
+    default: op
+  amgui.admin:
+    description: Админ-команды /amgui
+    default: op
+  amgui.player:
+    description: Управление игроками (кик, заморозка, тп)
+    default: op
+    children:
+      amgui.freeze: true
+  amgui.ban:
+    description: Бан/разбан
+    default: op
+  amgui.freeze:
+    description: Быстрая заморозка
+    default: op
+  amgui.teleport:
+    description: Телепортация к игроку/к себе
+    default: op
+  amgui.notes:
+    description: Просмотр и добавление заметок
+    default: op
+  amgui.groups:
+    description: Просмотр групп
+    default: op
+  amgui.groups.edit:
+    description: Редактирование групп
+    default: op
+  amgui.groups.assign:
+    description: Назначение групп игрокам
+    default: op
+  amgui.viewip:
+    description: Просмотр IP игрока
+    default: op
+  amgui.inventory.view:
+    description: Просмотр инвентарей
+    default: op
+  amgui.inventory.edit:
+    description: Редактирование инвентарей
+    default: op
+  amgui.logs:
+    description: Доступ к логам
+    default: op
+  amgui.staffchat:
+    description: Доступ к StaffChat
+    default: op
+  amgui.warn:
+    description: Предупреждения игроков
+    default: op
+  amgui.mute:
+    description: Мут игроков
+    default: op
+  amgui.alts:
+    description: Просмотр альт-аккаунтов
+    default: op
+  amgui.rollback:
+    description: Откат инвентаря
+    default: op
