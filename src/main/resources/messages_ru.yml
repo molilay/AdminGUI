@@ -1,0 +1,132 @@
+messages:
+  command-help: "&7Доступно: &f%commands%"
+  prefix: "&8[&cAM&8]"
+  no-permission: "&cУ вас нет прав на это действие."
+  player-not-found: "&cИгрок не найден."
+  only-players: "&cКоманда доступна только игрокам."
+  config-reloaded: "&a✓ Конфигурация перезагружена."
+  action-denied: "&cДействие запрещено: %reason%"
+  case-created: "&a✓ Создано дело #%id%."
+  case-not-found: "&cДело не найдено."
+  audit-integrity-failed: "&cЦелостность журнала аудита нарушена. Проверьте консоль."
+gui:
+  inbox:
+    title: "&8Мои задачи"
+    filter: "&eФильтр: &f%filter%"
+    compact: "&bКомпактный режим: %status%"
+    legend: "&bЛегенда"
+    legend-open: "&eЛКМ &7— открыть"
+    legend-claim: "&bShift+ЛКМ &7— забрать задачу"
+    legend-overdue: "&cСвечение &7— просрочено"
+  simulator:
+    title: "&8Security Simulator"
+    automod: "&bТест текста AutoMod"
+    antiraid: "&6Сценарий AntiRaid"
+    dry-run: "&aГарантированный DRY-RUN"
+    prompt-text: "§eВведите текст для безопасной симуляции AutoMod:"
+    prompt-raid: "§eВведите входы,новые,одна_подсеть (например 20,12,9):"
+  automod:
+    title: "&8AutoMod"
+  automod-rules:
+    title: "&8AutoMod: правила"
+  automod-approvals:
+    title: "&8AutoMod: подтверждения"
+    legend: "&7ЛКМ — одобрить; ПКМ — отклонить"
+    handled: "&cЗапрос уже обработан другим сотрудником."
+  incident:
+    prompt-player: "§eВведите ник игрока для Incident Timeline:"
+    snapshot: "&aIncident Snapshot"
+    snapshot-lore: "&7Сохраняет YAML-снимок без базы данных"
+    capture-confirm: "§aСоздать Incident Snapshot для %player%?"
+  geoip:
+    title: "&8Геолокация: %target%"
+  investigation:
+    title: "&8Центр расследования: %player%"
+  alt-connections:
+    title: "&8Связи аккаунтов: %player%"
+  antiraid:
+    title: "&8AntiRaid — защита сервера"
+  doctor:
+    title: "&8AMGUI Doctor"
+  cases:
+    title: "&8Дела модерации"
+  case-detail:
+    title: "&8Дело модерации #%id%"
+  dashboard:
+    players-lore: "&7Онлайн, офлайн и карточки игроков"
+    investigations-lore: "&7Жалобы, дела, апелляции и аудит"
+    punishments-lore: "&7Баны, муты, шаблоны и статистика"
+    security-lore: "&7AntiRaid, AutoMod, Simulator и защита"
+    system-lore: "&7Doctor и состояние сервисов"
+    inbox-lore: "&7Дела, жалобы, апелляции и AutoMod"
+    overdue: "&7Просроченных дел: &f%count%"
+    simulator-lore: "&7Проверка политик без наказаний и изменений"
+    all-tools-lore: "&7Открыть расширенное меню"
+    players-online: "&7Игроков: &f%count%"
+    tasks: "&7Задач: &f%count%"
+    inbox: "&aМои задачи"
+    simulator: "&bSecurity Simulator"
+    title: "&8Центр модерации"
+    players: "&aИгроки"
+    investigations: "&bРасследования"
+    punishments: "&cНаказания"
+    security: "&6Безопасность"
+    system: "&dСистема"
+    all-tools: "&eВсе инструменты"
+  category:
+    players:
+      title: "&8Игроки"
+    investigations:
+      title: "&8Расследования"
+    punishments:
+      title: "&8Наказания"
+    security:
+      title: "&8Безопасность"
+    system:
+      title: "&8Система"
+common:
+  actions:
+    home: "&e⌂ Главная"
+    back: "&e« Назад"
+    close: "&cЗакрыть"
+    open: "&eОткрыть"
+    claim: "&bЗабрать"
+    takeover: "&cПереназначить"
+    approve: "&aОдобрить"
+    reject: "&cОтклонить"
+    search: "&bПоиск"
+    filter: "&eФильтр"
+    confirm: "&aПодтвердить"
+    cancel: "&cОтмена"
+  status:
+    enabled: "&aВКЛ"
+    disabled: "&cВЫКЛ"
+    overdue: "&cПросрочено"
+    on-time: "&aВ срок"
+    assigned: "&aНазначено"
+    unassigned: "&7Не назначено"
+    compact: "&aКомпактно"
+    full: "&7Подробно"
+  yes: "да"
+  no: "нет"
+  unknown: "неизвестно"
+time:
+  days:
+    short: "д"
+  hours:
+    short: "ч"
+  minutes:
+    short: "м"
+  seconds:
+    short: "с"
+enums:
+  case-status:
+    open: "открыто"
+    investigating: "расследуется"
+    resolved: "решено"
+    rejected: "отклонено"
+  case-priority:
+    low: "низкий"
+    normal: "обычный"
+    high: "высокий"
+    critical: "критический"

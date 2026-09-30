@@ -2,6 +2,8 @@ package me.admin.gui.listeners;
 
 import me.admin.gui.AdvancedModeratorGUI;
 import me.admin.gui.manager.FreezeManager;
+import io.papermc.paper.event.player.AsyncChatEvent;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -45,18 +47,21 @@ public class FreezeListener implements Listener {
     }
 
     @EventHandler(priority = EventPriority.LOWEST)
-    public void onPlayerChat(AsyncPlayerChatEvent event) {
+    public void onPlayerChat(AsyncChatEvent event) {
         Player player = event.getPlayer();
         if (!plugin.getFreezeManager().isFrozen(player)) return;
         if (!plugin.getConfigManager().isFreezeChat()) return;
 
         event.setCancelled(true);
-        for (Player staff : plugin.getServer().getOnlinePlayers()) {
-            if (staff.hasPermission("amgui.freeze")) {
-                staff.sendMessage("§c[Frozen] §7" + player.getName() + "§f: " + event.getMessage());
+        String message = PlainTextComponentSerializer.plainText().serialize(event.message());
+        plugin.getServer().getScheduler().runTask(plugin, () -> {
+            for (Player staff : plugin.getServer().getOnlinePlayers()) {
+                if (staff.hasPermission("amgui.freeze")) {
+                    staff.sendMessage("§c[Frozen] §7" + player.getName() + "§f: " + message);
+                }
             }
-        }
-        player.sendMessage("§7[§cFrozen§7] §fСообщение отправлено модераторам: §7" + event.getMessage());
+            player.sendMessage("§7[§cFrozen§7] §fСообщение отправлено модераторам: §7" + message);
+        });
     }
 
     @EventHandler(priority = EventPriority.LOWEST)

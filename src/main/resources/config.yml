@@ -1,5 +1,8 @@
 # AdvancedModerator GUI Configuration
 
+# Язык файлов messages_<language>.yml
+language: ru
+
 reasons:
   kick:
     - "Нарушение правил"
@@ -91,8 +94,14 @@ gui:
   title-inventory-view: "&8Инвентарь: %player%"
   title-ender-chest: "&8Эндер-сундук: %player%"
   title-active-bans: "&8Активные баны"
+  title-active-mutes: "&8Активные мьюты"
+  title-active-ipbans: "&8IP-баны"
+  title-punishment-stats: "&6Статистика наказаний"
   title-player-history: "&8История: %player%"
   title-snapshots: "&8Снапшоты: %player%"
+  title-permissions: "&8Права: %player%"
+  title-ip-history: "&8IP: %player%"
+  items-per-page: 45
   sound-enabled: true
 
 broadcast:
@@ -101,24 +110,371 @@ broadcast:
   tempban: true
   warn: false
 
+confirmations:
+  ban: true
+  ipban: true
+  unban: true
+  clear-inv: true
+  rollback: true
+
 database:
-  type: sqlite # sqlite или mysql
+  type: sqlite
+  # Максимум строк, загружаемых в одно GUI/экспортное представление
+  gui-query-limit: 5000
+  pool:
+    maximum-size: 10
+    minimum-idle: 1
+    connection-timeout-ms: 5000
+  retention-days: 365
   mysql:
     host: localhost
     port: 3306
     database: adminmoderator
     username: root
     password: ""
+    use-ssl: false
 
 discord:
-  webhook-url: "" # Оставьте пустым для отключения
+  webhook-url: ""
+  queue-size: 200
+  retry-attempts: 4
+  timeout-ms: 5000
+  # Raw IP в Discord выключен по умолчанию; используется маска сети.
+  include-sensitive-ip: false
 
 warn:
   max-warns: 3
+  points-threshold: 5
   auto-ban: true
+  default-points: 1
   fine: 50.0
 
 sounds:
   click: "UI_BUTTON_CLICK"
   success: "ENTITY_PLAYER_LEVELUP"
   error: "ENTITY_VILLAGER_NO"
+
+theme:
+  primary: "&c"
+  secondary: "&7"
+  accent: "&e"
+  success: "&a"
+  error: "&c"
+  info: "&b"
+  title: "&8"
+  highlight: "&f"
+
+update-checker:
+  enabled: false
+  # GitHub API URL, например: https://api.github.com/repos/owner/repository/releases/latest
+  url: ""
+  interval: 72000
+
+antivpn:
+  enabled: false
+  api-key: ""
+  block-on-vpn: false
+  notify-discord: true
+  cache-timeout: 3600
+
+protected-players: []
+
+blacklist:
+  enabled: true
+  action: kick
+  reason: "Использование запрещённых слов"
+  words:
+    - "badword1"
+    - "badword2"
+
+automod:
+  enabled: true
+  # Настройка правил в automod.yml
+
+moderation-cases:
+  auto-create-from-reports: true
+  max-open-per-player: 20
+  reset-deadline-on-priority-change: true
+  overdue-reminder-minutes: 60
+  notify-all-staff-overdue: true
+  export-audit-limit: 10000
+  deadline-hours:
+    low: 168
+    normal: 72
+    high: 24
+    critical: 6
+  templates:
+    cheats:
+      title: "Расследование читов: %player%"
+      priority: HIGH
+      deadline-hours: 12
+    grief:
+      title: "Расследование гриферства: %player%"
+      priority: NORMAL
+      deadline-hours: 48
+    account-security:
+      title: "Безопасность аккаунта: %player%"
+      priority: CRITICAL
+      deadline-hours: 4
+
+audit:
+  memory-limit: 2000
+  queue-capacity: 2048
+  checkpoint-interval: 100
+  flush-timeout-ms: 5000
+
+# Bounded plugin-owned workers and immutable main-thread player snapshots.
+runtime:
+  executor:
+    threads: 2
+    queue-capacity: 256
+  luckperms-timeout-ms: 3000
+  player-context-refresh-ticks: 40
+
+# Единая ограниченная очередь атомарной записи YAML. База данных здесь не используется.
+persistence:
+  queue-capacity: 128
+  debounce-ms: 250
+  flush-timeout-ms: 5000
+
+# Квитанции позволяют безопасно отменить только последнее обратимое действие.
+action-receipts:
+  ttl-seconds: 600
+  max-per-player: 10
+  max-total: 500
+
+# Ограничивает YAML-снапшоты и кэш без использования базы данных.
+inventory-retention:
+  snapshots:
+    ttl-days: 30
+    max-per-player: 20
+    max-total: 5000
+  cache:
+    ttl-days: 7
+    max-per-player: 1
+    max-total: 1000
+
+cache:
+  heads:
+    max-entries: 1000
+    ttl-seconds: 3600
+
+security:
+  dual-approval:
+    backup-restore: true
+    expire-seconds: 600
+    max-pending: 100
+
+# Сырые IP хранятся ограниченно; долгосрочные связи альтов используют HMAC-идентификаторы.
+privacy:
+  raw-ip-retention-days: 30
+  # Six hours. The timer only submits work to the bounded plugin runtime.
+  ip-retention-prune-ticks: 432000
+  max-raw-ip-history-per-player: 20
+  max-ip-identities-per-player: 50
+
+# Резервные копии только YAML-файлов и audit.log. Файлы базы данных не копируются.
+backups:
+  enabled: true
+  create-on-start: true
+  interval-hours: 24
+  keep-last: 14
+  # Restore принимает только архивы с HMAC-подписью текущего сервера.
+  require-signature: true
+
+# Приблизительная геолокация по IP из карточки игрока и /amgui geoip.
+# Запрос выполняется только вручную сотрудником с правом amgui.geoip.
+# Выбранный публичный IP передаётся внешнему HTTPS-сервису; приватные адреса блокируются.
+ip-geolocation:
+  enabled: true
+  language: ru
+  timeout-seconds: 5
+  cache-seconds: 86400
+  show-coordinates: true
+  max-batch-lookups: 20
+  max-in-flight: 8
+  max-cache-entries: 2000
+  endpoint: "https://ipwho.is/{ip}?lang={language}&fields=success,message,ip,country,country_code,region,city,latitude,longitude,timezone.id,connection.isp,connection.org,type"
+
+# AntiRaid использует только память и YAML-журнал. Автоматических банов нет.
+antiraid:
+  enabled: true
+  # alert-only только уведомляет; lockdown также включает временные ограничения.
+  mode: lockdown
+  window-seconds: 20
+  new-player-age-seconds: 60
+  trusted-account-age-seconds: 604800
+  hysteresis-ratio: 0.6
+  trigger-cooldown-seconds: 120
+  joins-threshold: 15
+  new-player-threshold: 10
+  same-ip-threshold: 8
+  lockdown-seconds: 180
+  block-chat: true
+  # По умолчанию вход не блокируется, чтобы избежать ложных срабатываний.
+  block-new-joins: false
+  keep-incidents: 100
+
+risk-profile:
+  new-player-hours: 24
+
+moderation-sessions:
+  keep-last: 200
+  max-actions: 100
+
+moderator-note-templates:
+  suspicious: "Игрок %player% отмечен для дополнительной проверки."
+  checked: "Проверка игрока %player% завершена, нарушений не обнаружено."
+  cooperation: "Игрок %player% сотрудничал с модерацией во время проверки."
+
+doctor:
+  run-on-start: true
+
+punishment-security:
+  prevent-self-action: true
+  enforce-hierarchy: true
+  allow-equal-weight: false
+  fail-closed-on-lookup-error: true
+  # Снятие OP/группы и кик за попытку обойти protected-players (опасная опция)
+  punish-protection-violations: false
+  bypass-permission: "amgui.hierarchy.bypass"
+  mass-action-limit: 10
+  actions-per-minute: 20
+  weight-per-minute: 20
+  global-weight-per-minute: 200
+  bypass-hard-cap-per-minute: 100
+  bypass-mass-action-hard-cap: 100
+  action-weights:
+    warn: 1
+    mute: 2
+    kick: 2
+    freeze: 2
+    clear-inventory: 4
+    rollback: 4
+    ban: 5
+    tempban: 5
+    ipban: 5
+
+chat-history:
+  max-per-player: 200
+
+appeal:
+  enabled: true
+
+coreprotect:
+  enabled: true
+
+investigation:
+  command-spy: true
+  chest-log: true
+
+trial-moderation:
+  enabled: false
+
+login-alerts:
+  enabled: true
+
+auto-escalation:
+  enabled: false
+  max-warns-per-hour: 3
+  action: mute
+  duration: 3600
+  reason: "Авто-эскалация: превышение лимита варнов"
+
+auto-broadcaster:
+  enabled: false
+  interval: 600
+  messages:
+    - "&8[&cAM&8] &7Соблюдайте правила сервера!"
+    - "&8[&cAM&8] &7По вопросам к администрации — напишите в Discord."
+
+banwave:
+  delay-between: 20
+  per-wave: 5
+
+rule-accept:
+  enabled: false
+  rules:
+    - "&7Не использовать читы и моды, дающие преимущество."
+    - "&7Не оскорблять других игроков."
+    - "&7Не гриферить постройки."
+    - "&7Не спамить в чате."
+    - "&7Не рекламировать сторонние ресурсы."
+
+web-panel:
+  enabled: false
+  bind-address: "127.0.0.1"
+  # Внешний HTTP bind требует явного согласия; рекомендуется TLS reverse proxy и firewall.
+  allow-external: false
+  include-sensitive-ip: false
+  port: 8080
+  # Обязательный секрет длиной от 16 символов. Передавайте: Authorization: Bearer <token>
+  # Legacy all-access token. Для нового сервера оставьте пустым и используйте scoped tokens ниже.
+  token: ""
+  # Хранится только SHA-256 токена. Scope: health, stats, moderation, audit или all.
+  # SHA-256 в PowerShell: [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes("TOKEN")))
+  tokens: {}
+  # Пример:
+  # tokens:
+  #   monitoring:
+  #     sha256: "64_hex_characters"
+  #     scopes: [health, stats]
+  #     expires-at: 0 # Unix epoch milliseconds; 0 = без срока
+  cors-origin: ""
+  rate-limit-per-minute: 120
+
+notifications:
+  ban:
+    sound: "ENTITY_LIGHTNING_BOLT_THUNDER"
+    title:
+      enabled: true
+      text: "&c{target} забанен"
+      subtitle: "&7Модератор {player}"
+  kick:
+    sound: "ENTITY_ARROW_HIT"
+    title:
+      enabled: true
+      text: "&e{target} кикнут"
+      subtitle: ""
+  mute:
+    sound: "BLOCK_NOTE_BLOCK_PLING"
+    title:
+      enabled: true
+      text: "&e{target} замьючен"
+      subtitle: ""
+  warn:
+    sound: "BLOCK_NOTE_BLOCK_PLING"
+    title:
+      enabled: true
+      text: "&e{target} получил варн"
+      subtitle: ""
+  freeze:
+    sound: "BLOCK_GLASS_PLACE"
+    title:
+      enabled: true
+      text: "&b{target} заморожен"
+      subtitle: ""
+  unfreeze:
+    sound: "BLOCK_GLASS_BREAK"
+    title:
+      enabled: true
+      text: "&a{target} разморожен"
+      subtitle: ""
+
+# Report system
+reports:
+  cooldown-seconds: 60
+  archive-after-days: 7
+  categories:
+    - hacking
+    - chat
+    - griefing
+    - other
+
+# YAML-only moderator workflow. No SQL/database storage is used.
+workflow:
+  inbox:
+    stale-hours: 24
+  incident:
+    timeline-limit: 500
+    snapshot-chat-limit: 50

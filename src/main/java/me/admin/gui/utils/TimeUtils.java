@@ -3,6 +3,7 @@ package me.admin.gui.utils;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -12,19 +13,31 @@ public class TimeUtils {
     private static final DateTimeFormatter LOG_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     public static long parseDuration(String input) {
-        Matcher matcher = DURATION_PATTERN.matcher(input);
+        if (input == null || input.isBlank()) return 0;
+
+        String normalized = input.replaceAll("\\s+", "");
+        Matcher matcher = DURATION_PATTERN.matcher(normalized);
         long totalSeconds = 0;
+        int parsedUntil = 0;
         while (matcher.find()) {
-            long value = Long.parseLong(matcher.group(1));
-            String unit = matcher.group(2).toLowerCase();
-            switch (unit) {
-                case "с": case "s": totalSeconds += value; break;
-                case "м": case "m": totalSeconds += value * 60; break;
-                case "ч": case "h": totalSeconds += value * 3600; break;
-                case "д": case "d": totalSeconds += value * 86400; break;
+            if (matcher.start() != parsedUntil) return 0;
+            try {
+                long value = Long.parseLong(matcher.group(1));
+                String unit = matcher.group(2).toLowerCase(Locale.ROOT);
+                long multiplier = switch (unit) {
+                    case "с", "s" -> 1;
+                    case "м", "m" -> 60;
+                    case "ч", "h" -> 3600;
+                    case "д", "d" -> 86400;
+                    default -> throw new IllegalStateException("Unexpected duration unit: " + unit);
+                };
+                totalSeconds = Math.addExact(totalSeconds, Math.multiplyExact(value, multiplier));
+            } catch (ArithmeticException | NumberFormatException e) {
+                return 0;
             }
+            parsedUntil = matcher.end();
         }
-        return totalSeconds;
+        return parsedUntil == normalized.length() ? totalSeconds : 0;
     }
 
     public static String formatDuration(long seconds) {
@@ -50,7 +63,7 @@ public class TimeUtils {
     }
 
     public static String formatLogTime(long millis) {
-        return new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm").format(new java.util.Date(millis));
+        return java.time.LocalDateTime.ofInstant(java.time.Instant.ofEpochMilli(millis), java.time.ZoneId.systemDefault()).format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
     }
 
     public static String formatRemaining(long endTimeMillis) {

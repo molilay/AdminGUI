@@ -39,7 +39,7 @@ public class BanDurationGUI {
         size = Math.max(27, Math.min(size, 54));
 
         Inventory inv = Bukkit.createInventory(null, size,
-                plugin.getConfigManager().getGuiTitle("title-ban-duration"));
+                me.admin.gui.utils.TextUtil.legacy(plugin.getConfigManager().getGuiTitle("title-ban-duration")));
 
         int slot = 0;
         for (String dur : durations) {
@@ -64,8 +64,7 @@ public class BanDurationGUI {
                     .build());
         }
 
-        viewer.openInventory(inv);
-        plugin.getGuiManager().register(viewer.getUniqueId(), new PaginatedGUI(plugin, viewer) {
+        PaginatedGUI menu = new PaginatedGUI(plugin, viewer) {
             @Override public String getTitle() { return plugin.getConfigManager().getGuiTitle("title-ban-duration"); }
             @Override public void buildContent() {}
             @Override
@@ -94,6 +93,7 @@ public class BanDurationGUI {
                     callback.accept(seconds);
                 });
             }
-        });
+        };
+        plugin.getGuiManager().open(viewer, menu, inv, true);
     }
 }

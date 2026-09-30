@@ -1,11 +1,11 @@
 package me.admin.gui.utils;
 
+import net.kyori.adventure.text.Component;
 import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 public class ItemBuilder {
@@ -14,18 +14,23 @@ public class ItemBuilder {
     private final ItemMeta meta;
 
     public ItemBuilder(Material material) {
-        this.item = new ItemStack(material);
+        // Конфиг или старая версия сервера могут дать null/неизвестный материал.
+        this.item = new ItemStack(material == null ? Material.PAPER : material);
         this.meta = item.getItemMeta();
     }
 
     public ItemBuilder(ItemStack item) {
-        this.item = item.clone();
+        this.item = item == null ? new ItemStack(Material.PAPER) : item.clone();
         this.meta = this.item.getItemMeta();
     }
 
+    public static Component legacy(String text) {
+        return net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacySection().deserialize(text.replace("&", "§"));
+    }
+
     public ItemBuilder name(String name) {
-        if (meta != null) {
-            meta.setDisplayName(name.replace("&", "§"));
+        if (meta != null && name != null) {
+            meta.displayName(legacy(name));
             item.setItemMeta(meta);
         }
         return this;
@@ -33,42 +38,45 @@ public class ItemBuilder {
 
     public ItemBuilder lore(String... lines) {
         if (meta == null) return this;
-        List<String> lore = meta.getLore();
-        if (lore == null) lore = new ArrayList<>();
+        List<Component> lore = new ArrayList<>();
+        List<Component> existing = meta.lore();
+        if (existing != null) lore.addAll(existing);
         for (String line : lines) {
-            lore.add(line.replace("&", "§"));
+            if (line != null) lore.add(legacy(line));
         }
-        meta.setLore(lore);
+        meta.lore(lore);
         item.setItemMeta(meta);
         return this;
     }
 
     public ItemBuilder lore(List<String> lines) {
+        if (lines == null) return this;
         if (meta == null) return this;
-        List<String> lore = meta.getLore();
-        if (lore == null) lore = new ArrayList<>();
+        List<Component> lore = new ArrayList<>();
+        List<Component> existing = meta.lore();
+        if (existing != null) lore.addAll(existing);
         for (String line : lines) {
-            lore.add(line.replace("&", "§"));
+            if (line != null) lore.add(legacy(line));
         }
-        meta.setLore(lore);
+        meta.lore(lore);
         item.setItemMeta(meta);
         return this;
     }
 
     public ItemBuilder setLore(String... lines) {
         if (meta != null) {
-            List<String> lore = new ArrayList<>();
+            List<Component> lore = new ArrayList<>();
             for (String line : lines) {
-                lore.add(line.replace("&", "§"));
+                if (line != null) lore.add(legacy(line));
             }
-            meta.setLore(lore);
+            meta.lore(lore);
             item.setItemMeta(meta);
         }
         return this;
     }
 
     public ItemBuilder amount(int amount) {
-        item.setAmount(amount);
+        item.setAmount(Math.max(1, Math.min(amount, item.getMaxStackSize() > 0 ? item.getMaxStackSize() : 64)));
         return this;
     }
 

@@ -33,7 +33,7 @@ public class LogsGUI extends PaginatedGUI {
     private static final int SLOT_SEARCH = 44;
     private static final int SLOT_SORT = 43;
 
-    private static final int EFFECTIVE_CAPACITY = 42; // 45 slots - SLOT_EXPORT(4) - SLOT_CLEAR(8) - SLOT_SORT(43)
+    private static final int EFFECTIVE_CAPACITY = 41; // 45 slots - SLOT_EXPORT(4) - SLOT_CLEAR(8) - SLOT_SEARCH(44) - SLOT_SORT(43)
 
     public LogsGUI(AdvancedModeratorGUI plugin, Player viewer) {
         super(plugin, viewer);
@@ -52,19 +52,15 @@ public class LogsGUI extends PaginatedGUI {
     @Override
     public void buildContent() {
         contentItems.clear();
-        List<LogEntry> logs = plugin.getDatabaseManager().getAllLogs();
+        int queryLimit = Math.max(100, plugin.getConfig().getInt("database.gui-query-limit", 5000));
+        List<LogEntry> logs = plugin.getDatabaseManager().getLogs(queryLimit, 0,
+                filterPlayer.isEmpty() ? null : filterPlayer);
 
         if (!filterType.equals("all")) {
             logs = logs.stream()
                     .filter(l -> l.getType().equalsIgnoreCase(filterType))
                     .collect(Collectors.toList());
         }
-        if (!filterPlayer.isEmpty()) {
-            logs = logs.stream()
-                    .filter(l -> l.getTarget().toLowerCase().contains(filterPlayer.toLowerCase()))
-                    .collect(Collectors.toList());
-        }
-
         if (sortAscending) {
             logs = new java.util.ArrayList<>(logs);
             java.util.Collections.reverse(logs);
@@ -115,6 +111,8 @@ public class LogsGUI extends PaginatedGUI {
     @Override
     public void onClick(int slot) {
         me.admin.gui.utils.SoundUtil.click(viewer);
+        if (slot == SLOT_SEARCH) { searchByPlayer(); return; }
+        if (slot == SLOT_SORT) { sortAscending = !sortAscending; page = 0; refresh(); return; }
         if (slot >= 45) {
             switch (slot) {
                 case SLOT_CLOSE -> close();
@@ -131,19 +129,21 @@ public class LogsGUI extends PaginatedGUI {
                     filterType = "freeze"; page = 0; refresh();
                 }
                 case SLOT_MAIN_MENU -> {
-                    plugin.getGuiManager().unregister(viewer.getUniqueId());
-                    new MainMenu(plugin, viewer).open();
+                    openHome();
                 }
-                case SLOT_SEARCH -> searchByPlayer();
-                case SLOT_SORT -> { sortAscending = !sortAscending; page = 0; refresh(); }
                 case SLOT_PREV -> { if (page > 0) { page--; refresh(); } }
                 case SLOT_NEXT -> { if ((page + 1) * EFFECTIVE_CAPACITY < contentItems.size()) { page++; refresh(); } }
             }
             return;
         }
 
-        if (slot == SLOT_EXPORT) exportLogs();
-        else if (slot == SLOT_CLEAR) clearLogs();
+        if (slot == SLOT_EXPORT) {
+            if (!viewer.hasPermission("amgui.export")) { viewer.sendMessage("§cНет прав."); return; }
+            exportLogs();
+        } else if (slot == SLOT_CLEAR) {
+            if (!viewer.hasPermission("amgui.admin")) { viewer.sendMessage("§cНет прав."); return; }
+            clearLogs();
+        }
     }
 
     private void searchByPlayer() {
@@ -156,51 +156,64 @@ public class LogsGUI extends PaginatedGUI {
     }
 
     private void exportLogs() {
-        List<LogEntry> logs = plugin.getDatabaseManager().getAllLogs();
-        if (!filterType.equals("all")) {
-            logs = logs.stream()
-                    .filter(l -> l.getType().equalsIgnoreCase(filterType))
-                    .collect(Collectors.toList());
-        }
-        if (!filterPlayer.isEmpty()) {
-            logs = logs.stream()
-                    .filter(l -> l.getTarget().toLowerCase().contains(filterPlayer.toLowerCase()))
-                    .collect(Collectors.toList());
-        }
+        String selectedType = filterType;
+        String selectedPlayer = filterPlayer;
+        viewer.sendMessage("§7Экспорт логов запущен…");
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> exportLogsAsync(selectedType, selectedPlayer));
+    }
 
+    private void exportLogsAsync(String selectedType, String selectedPlayer) {
+        int queryLimit = Math.max(100, plugin.getConfig().getInt("database.gui-query-limit", 5000));
+        List<LogEntry> logs = plugin.getDatabaseManager().getLogs(queryLimit, 0,
+                selectedPlayer.isEmpty() ? null : selectedPlayer);
+        if (!selectedType.equals("all")) {
+            logs = logs.stream().filter(l -> l.getType().equalsIgnoreCase(selectedType)).toList();
+        }
         File dir = new File(plugin.getDataFolder(), "exports");
-        dir.mkdirs();
+        if (!dir.exists() && !dir.mkdirs()) {
+            Bukkit.getScheduler().runTask(plugin, () -> viewer.sendMessage("§cНе удалось создать каталог exports."));
+            return;
+        }
         File file = new File(dir, "logs_" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss")) + ".txt");
-
-        try (FileWriter fw = new FileWriter(file)) {
+        try (FileWriter fw = new FileWriter(file, java.nio.charset.StandardCharsets.UTF_8)) {
             fw.write("=== Export Logs ===\n");
             fw.write("Date: " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) + "\n");
-            fw.write("Filter: type=" + filterType + " player=" + (filterPlayer.isEmpty() ? "all" : filterPlayer) + "\n");
+            fw.write("Filter: type=" + selectedType + " player=" + (selectedPlayer.isEmpty() ? "all" : selectedPlayer) + "\n");
             fw.write("Total: " + logs.size() + "\n\n");
-            for (LogEntry e : logs) {
-                fw.write("[" + e.getType() + "] " + e.getTarget() + " | " + e.getModerator() + " | " + e.getReason() +
-                        " | " + TimeUtils.formatLogTime(e.getDate()));
-                if (e.getDuration() > 0) fw.write(" | " + TimeUtils.formatDuration(e.getDuration()));
+            for (LogEntry entry : logs) {
+                fw.write("[" + entry.getType() + "] " + entry.getTarget() + " | " + entry.getModerator() + " | "
+                        + entry.getReason() + " | " + TimeUtils.formatLogTime(entry.getDate()));
+                if (entry.getDuration() > 0) fw.write(" | " + TimeUtils.formatDuration(entry.getDuration()));
                 fw.write("\n");
             }
-            viewer.sendMessage("§a✓ Логи экспортированы: " + file.getName());
+            int count = logs.size();
+            Bukkit.getScheduler().runTask(plugin, () -> {
+                plugin.getAuditManager().record(viewer, "logs.export", selectedPlayer, null,
+                        "file=" + file.getName() + "; entries=" + count);
+                viewer.sendMessage("§a✓ Логи экспортированы: " + file.getName());
+            });
         } catch (IOException ex) {
-            viewer.sendMessage("§cОшибка экспорта логов.");
+            Bukkit.getScheduler().runTask(plugin, () -> viewer.sendMessage("§cОшибка экспорта логов."));
         }
     }
 
     private void clearLogs() {
         new ConfirmGUI(plugin, viewer, "§cОчистить все логи?", () -> {
-            plugin.getDatabaseManager().clearLogs();
-            page = 0;
-            refresh();
-            viewer.sendMessage("§a✓ Логи очищены.");
+            Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+                plugin.getDatabaseManager().clearLogs();
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                    plugin.getAuditManager().record(viewer, "logs.clear", "database", null, "all punishment logs");
+                    page = 0;
+                    refresh();
+                    viewer.sendMessage("§a✓ Логи очищены.");
+                });
+            });
         }).open();
     }
 
     @Override
     protected Inventory buildInventory() {
-        Inventory inv = Bukkit.createInventory(null, SIZE, getTitle());
+        Inventory inv = Bukkit.createInventory(null, SIZE, me.admin.gui.utils.TextUtil.legacy(getTitle()));
 
         int start = page * EFFECTIVE_CAPACITY;
         int end = Math.min(start + EFFECTIVE_CAPACITY, contentItems.size());

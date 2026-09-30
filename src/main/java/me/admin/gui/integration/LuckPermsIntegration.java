@@ -36,7 +36,7 @@ public class LuckPermsIntegration {
     }
 
     private LuckPerms getApi() {
-        if (api == null) setup();
+        if (api == null && !setup()) throw new IllegalStateException("LuckPerms API is not available");
         return api;
     }
 
@@ -70,8 +70,8 @@ public class LuckPermsIntegration {
         return getGroupManager().createAndLoadGroup(name);
     }
 
-    public void deleteGroup(Group group) {
-        getGroupManager().deleteGroup(group).join();
+    public CompletableFuture<Void> deleteGroup(Group group) {
+        return getGroupManager().deleteGroup(group);
     }
 
     public String getGroupPrefix(Group group) {
@@ -97,70 +97,81 @@ public class LuckPermsIntegration {
         return parents;
     }
 
-    public void addParent(Group group, Group parent) {
+    public CompletableFuture<Void> addParent(Group group, Group parent) {
         group.data().add(InheritanceNode.builder(parent).build());
-        getGroupManager().saveGroup(group).join();
+        return getGroupManager().saveGroup(group);
     }
 
-    public void removeParent(Group group, Group parent) {
+    public CompletableFuture<Void> removeParent(Group group, Group parent) {
         group.data().remove(InheritanceNode.builder(parent).build());
-        getGroupManager().saveGroup(group).join();
+        return getGroupManager().saveGroup(group);
     }
 
-    public void addPermission(Group group, String permission, boolean value) {
+    public CompletableFuture<Void> addPermission(Group group, String permission, boolean value) {
         group.data().add(PermissionNode.builder(permission).value(value).build());
-        getGroupManager().saveGroup(group).join();
+        return getGroupManager().saveGroup(group);
     }
 
-    public void removePermission(Group group, String permission) {
+    public CompletableFuture<Void> removePermission(Group group, String permission) {
         group.data().remove(PermissionNode.builder(permission).build());
-        getGroupManager().saveGroup(group).join();
+        return getGroupManager().saveGroup(group);
     }
 
     public Set<PermissionNode> getPermissions(Group group) {
         return group.getNodes(NodeType.PERMISSION).stream().collect(Collectors.toSet());
     }
 
-    public void setGroupWeight(Group group, int weight) {
+    public CompletableFuture<Void> setGroupWeight(Group group, int weight) {
         group.data().clear(n -> n.getType() == NodeType.WEIGHT);
         group.data().add(WeightNode.builder(weight).build());
-        getGroupManager().saveGroup(group).join();
+        return getGroupManager().saveGroup(group);
     }
 
-    public void setGroupPrefix(Group group, String prefix) {
+    public CompletableFuture<Void> setGroupPrefix(Group group, String prefix) {
         group.data().clear(node -> node instanceof ChatMetaNode<?, ?> chatMeta
                 && chatMeta.getMetaType() == net.luckperms.api.node.ChatMetaType.PREFIX);
         group.data().add(net.luckperms.api.node.ChatMetaType.PREFIX.builder(prefix, 100).build());
-        getGroupManager().saveGroup(group).join();
+        return getGroupManager().saveGroup(group);
     }
 
-    public void setGroupSuffix(Group group, String suffix) {
+    public CompletableFuture<Void> setGroupSuffix(Group group, String suffix) {
         group.data().clear(node -> node instanceof ChatMetaNode<?, ?> chatMeta
                 && chatMeta.getMetaType() == net.luckperms.api.node.ChatMetaType.SUFFIX);
         group.data().add(net.luckperms.api.node.ChatMetaType.SUFFIX.builder(suffix, 100).build());
-        getGroupManager().saveGroup(group).join();
+        return getGroupManager().saveGroup(group);
     }
 
-    public void renameGroup(Group group, String newName) {
+    public CompletableFuture<Void> renameGroup(Group group, String newName) {
         group.data().clear(n -> n.getType() == NodeType.DISPLAY_NAME);
         group.data().add(DisplayNameNode.builder(newName).build());
-        getGroupManager().saveGroup(group).join();
+        return getGroupManager().saveGroup(group);
     }
 
     public CompletableFuture<User> getUser(UUID uuid) {
         return getUserManager().loadUser(uuid);
     }
 
+    /** Loaded-only compatibility accessor. Never waits on the Bukkit main thread. */
     public User getUserSync(UUID uuid) {
-        try {
-            return getUser(uuid).get();
-        } catch (Exception e) {
-            return null;
-        }
+        return getUserManager().getUser(uuid);
+    }
+
+    public java.util.OptionalInt findUserWeight(UUID uuid) {
+        User user = getUserManager().getUser(uuid);
+        if (user == null) return java.util.OptionalInt.empty();
+        Group primary = getGroup(user.getPrimaryGroup());
+        return java.util.OptionalInt.of(primary == null ? 0 : primary.getWeight().orElse(0));
+    }
+
+    public Optional<Boolean> findUserPermission(UUID uuid, String permission) {
+        User user = getUserManager().getUser(uuid);
+        if (user == null) return Optional.empty();
+        return Optional.of(user.getCachedData().getPermissionData(DEFAULT_QUERY)
+                .checkPermission(permission).asBoolean());
     }
 
     public List<Group> getPlayerGroups(UUID uuid) {
-        User user = getUserSync(uuid);
+        User user = getUserManager().getUser(uuid);
         if (user == null) return new ArrayList<>();
         List<Group> groups = new ArrayList<>();
         for (Node node : user.getNodes()) {
@@ -173,9 +184,49 @@ public class LuckPermsIntegration {
     }
 
     public String getPrimaryGroup(UUID uuid) {
-        User user = getUserSync(uuid);
+        User user = getUserManager().getUser(uuid);
         if (user == null) return "default";
         return user.getPrimaryGroup();
+    }
+
+    public int getLoadedUserWeight(UUID uuid) {
+        User user = getUserManager().getUser(uuid);
+        if (user == null) return 0;
+        Group primary = getGroup(user.getPrimaryGroup());
+        return primary == null ? 0 : primary.getWeight().orElse(0);
+    }
+
+    public String getLoadedPrimaryGroup(UUID uuid) {
+        User user = getUserManager().getUser(uuid);
+        return user == null ? "default" : user.getPrimaryGroup();
+    }
+
+    public CompletableFuture<java.util.OptionalInt> findUserWeightAsync(UUID uuid) {
+        return getUser(uuid).thenApply(user -> {
+            Group primary = getGroup(user.getPrimaryGroup());
+            return java.util.OptionalInt.of(primary == null ? 0 : primary.getWeight().orElse(0));
+        });
+    }
+
+    public CompletableFuture<Optional<Boolean>> findUserPermissionAsync(UUID uuid, String permission) {
+        return getUser(uuid).thenApply(user -> Optional.of(user.getCachedData().getPermissionData(DEFAULT_QUERY)
+                .checkPermission(permission).asBoolean()));
+    }
+
+    /** Loads a detached immutable permission snapshot suitable for a GUI callback. */
+    public CompletableFuture<List<PermissionNode>> getPermissionsAsync(UUID uuid) {
+        return getUser(uuid).thenApply(user -> user.getNodes(NodeType.PERMISSION).stream()
+                .sorted(Comparator.comparing(PermissionNode::getPermission))
+                .toList());
+    }
+
+    /** Atomic LuckPerms mutation; persistence remains owned by LuckPerms' executor. */
+    public CompletableFuture<Void> setUserPermissionAsync(UUID uuid, String permission, boolean value) {
+        return getUserManager().modifyUser(uuid, user -> {
+            user.data().clear(node -> node instanceof PermissionNode permissionNode
+                    && permissionNode.getPermission().equalsIgnoreCase(permission));
+            user.data().add(PermissionNode.builder(permission).value(value).build());
+        });
     }
 
     public void setGroup(Player player, Group group) {

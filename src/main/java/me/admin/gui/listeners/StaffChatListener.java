@@ -1,10 +1,11 @@
 package me.admin.gui.listeners;
 
 import me.admin.gui.AdvancedModeratorGUI;
+import io.papermc.paper.event.player.AsyncChatEvent;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
-import org.bukkit.event.player.AsyncPlayerChatEvent;
 
 public class StaffChatListener implements Listener {
 
@@ -14,12 +15,15 @@ public class StaffChatListener implements Listener {
         this.plugin = plugin;
     }
 
-    @EventHandler
-    public void onChat(AsyncPlayerChatEvent event) {
+    @EventHandler(ignoreCancelled = true)
+    public void onChat(AsyncChatEvent event) {
         Player player = event.getPlayer();
         if (plugin.getStaffChatManager().isToggled(player)) {
             event.setCancelled(true);
-            plugin.getStaffChatManager().sendStaffMessage(player.getName(), event.getMessage());
+            String playerName = player.getName();
+            String message = PlainTextComponentSerializer.plainText().serialize(event.message());
+            plugin.getServer().getScheduler().runTask(plugin,
+                    () -> plugin.getStaffChatManager().sendStaffMessage(playerName, message));
         }
     }
 }

@@ -49,7 +49,7 @@ public class GroupEditorGUI extends PaginatedGUI {
 
     @Override
     protected Inventory buildInventory() {
-        Inventory inv = Bukkit.createInventory(null, SIZE, getTitle());
+        Inventory inv = Bukkit.createInventory(null, SIZE, me.admin.gui.utils.TextUtil.legacy(getTitle()));
         fillBorder(inv);
 
         if (mode.equals("main")) {
@@ -120,8 +120,9 @@ public class GroupEditorGUI extends PaginatedGUI {
         Set<PermissionNode> perms = plugin.getLuckPermsIntegration().getPermissions(group);
         List<PermissionNode> permList = new ArrayList<>(perms);
 
-        int start = page * MAX_ITEMS_PER_PAGE;
-        int end = Math.min(start + MAX_ITEMS_PER_PAGE, permList.size());
+        int permsPerPage = getPermissionsPerPage(); // slot 18 reserved for SLOT_BACK
+        int start = page * permsPerPage;
+        int end = Math.min(start + permsPerPage, permList.size());
 
         int contentSlot = 0;
         for (int i = start; i < end; i++) {
@@ -138,7 +139,7 @@ public class GroupEditorGUI extends PaginatedGUI {
             if (inv.getItem(i) == null) inv.setItem(i, ItemBuilder.createFiller());
         }
 
-        int totalPages = Math.max(1, (int) Math.ceil((double) permList.size() / MAX_ITEMS_PER_PAGE));
+        int totalPages = Math.max(1, (int) Math.ceil((double) permList.size() / permsPerPage));
         if (page > 0) inv.setItem(SLOT_PREV, ItemBuilder.createPreviousButton());
         inv.setItem(SLOT_INFO, ItemBuilder.createPageInfo(page, totalPages));
         if (end < permList.size()) inv.setItem(SLOT_NEXT, ItemBuilder.createNextButton());
@@ -163,8 +164,9 @@ public class GroupEditorGUI extends PaginatedGUI {
             }
         }
 
-        int start = page * MAX_ITEMS_PER_PAGE;
-        int end = Math.min(start + MAX_ITEMS_PER_PAGE, parentItems.size());
+        int permsPerPage = getPermissionsPerPage();
+        int start = page * permsPerPage;
+        int end = Math.min(start + permsPerPage, parentItems.size());
 
         int contentSlot = 0;
         for (int i = start; i < end; i++) {
@@ -181,7 +183,7 @@ public class GroupEditorGUI extends PaginatedGUI {
             if (inv.getItem(i) == null) inv.setItem(i, ItemBuilder.createFiller());
         }
 
-        int totalPages = Math.max(1, (int) Math.ceil((double) parentItems.size() / MAX_ITEMS_PER_PAGE));
+        int totalPages = Math.max(1, (int) Math.ceil((double) parentItems.size() / permsPerPage));
         if (page > 0) inv.setItem(SLOT_PREV, ItemBuilder.createPreviousButton());
         inv.setItem(SLOT_INFO, ItemBuilder.createPageInfo(page, totalPages));
         if (end < parentItems.size()) inv.setItem(SLOT_NEXT, ItemBuilder.createNextButton());
@@ -194,8 +196,7 @@ public class GroupEditorGUI extends PaginatedGUI {
     @Override
     public void onClick(int slot) {
         if (slot == SLOT_MAIN_MENU) {
-            plugin.getGuiManager().unregister(viewer.getUniqueId());
-            new MainMenu(plugin, viewer).open();
+            openHome();
             return;
         }
         if (slot == SLOT_CLOSE) {
@@ -274,6 +275,10 @@ public class GroupEditorGUI extends PaginatedGUI {
         }
     }
 
+    private int getPermissionsPerPage() {
+        return MAX_ITEMS_PER_PAGE - 1; // slot 18 reserved for SLOT_BACK
+    }
+
     private void handlePermissionsClick(int slot) {
         if (slot == SLOT_BACK) {
             mode = "main";
@@ -295,8 +300,9 @@ public class GroupEditorGUI extends PaginatedGUI {
         if (slot == SLOT_MAIN_MENU) return;
 
         List<PermissionNode> perms = new ArrayList<>(plugin.getLuckPermsIntegration().getPermissions(group));
+        int permsPerPage = getPermissionsPerPage();
         int adjustedSlot = slot >= SLOT_BACK ? slot - 1 : slot;
-        int index = page * MAX_ITEMS_PER_PAGE + adjustedSlot;
+        int index = page * permsPerPage + adjustedSlot;
         if (index >= 0 && index < perms.size()) {
             PermissionNode node = perms.get(index);
             plugin.getLuckPermsIntegration().removePermission(group, node.getPermission());
@@ -345,8 +351,9 @@ public class GroupEditorGUI extends PaginatedGUI {
             }
         }
 
+        int permsPerPage = getPermissionsPerPage();
         int adjustedSlot = slot >= SLOT_BACK ? slot - 1 : slot;
-        int index = page * MAX_ITEMS_PER_PAGE + adjustedSlot;
+        int index = page * permsPerPage + adjustedSlot;
         if (index >= 0 && index < combined.size()) {
             Group clicked = combined.get(index);
             if (parents.contains(clicked)) {
@@ -360,7 +367,6 @@ public class GroupEditorGUI extends PaginatedGUI {
 
     @Override
     public void open() {
-        viewer.openInventory(buildInventory());
-        plugin.getGuiManager().register(viewer.getUniqueId(), this);
+        super.open();
     }
 }

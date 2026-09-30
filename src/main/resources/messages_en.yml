@@ -1,0 +1,132 @@
+messages:
+  command-help: "&7Available: &f%commands%"
+  prefix: "&8[&cAM&8]"
+  no-permission: "&cYou do not have permission to do that."
+  player-not-found: "&cPlayer not found."
+  only-players: "&cThis command is only available to players."
+  config-reloaded: "&a✓ Configuration reloaded."
+  action-denied: "&cAction denied: %reason%"
+  case-created: "&a✓ Case #%id% created."
+  case-not-found: "&cCase not found."
+  audit-integrity-failed: "&cAudit log integrity check failed. Check the console."
+gui:
+  inbox:
+    title: "&8My tasks"
+    filter: "&eFilter: &f%filter%"
+    compact: "&bCompact mode: %status%"
+    legend: "&bLegend"
+    legend-open: "&eLeft click &7— open"
+    legend-claim: "&bShift+left click &7— claim task"
+    legend-overdue: "&cGlow &7— overdue"
+  simulator:
+    title: "&8Security Simulator"
+    automod: "&bAutoMod text test"
+    antiraid: "&6AntiRaid scenario"
+    dry-run: "&aGuaranteed DRY-RUN"
+    prompt-text: "§eEnter text for a safe AutoMod simulation:"
+    prompt-raid: "§eEnter joins,new,same_subnet (example: 20,12,9):"
+  automod:
+    title: "&8AutoMod"
+  automod-rules:
+    title: "&8AutoMod rules"
+  automod-approvals:
+    title: "&8AutoMod approvals"
+    legend: "&7Left click — approve; right click — reject"
+    handled: "&cThe request was already handled by another staff member."
+  incident:
+    prompt-player: "§eEnter a player name for Incident Timeline:"
+    snapshot: "&aIncident Snapshot"
+    snapshot-lore: "&7Creates a YAML snapshot without database access"
+    capture-confirm: "§aCreate an Incident Snapshot for %player%?"
+  geoip:
+    title: "&8Geolocation: %target%"
+  investigation:
+    title: "&8Investigation center: %player%"
+  alt-connections:
+    title: "&8Account connections: %player%"
+  antiraid:
+    title: "&8AntiRaid — server protection"
+  doctor:
+    title: "&8AMGUI Doctor"
+  cases:
+    title: "&8Moderation cases"
+  case-detail:
+    title: "&8Moderation case #%id%"
+  dashboard:
+    players-lore: "&7Online/offline players and player cards"
+    investigations-lore: "&7Reports, cases, appeals and audit"
+    punishments-lore: "&7Bans, mutes, templates and statistics"
+    security-lore: "&7AntiRaid, AutoMod, Simulator and protection"
+    system-lore: "&7Doctor and service health"
+    inbox-lore: "&7Cases, reports, appeals and AutoMod"
+    overdue: "&7Overdue cases: &f%count%"
+    simulator-lore: "&7Test policies without punishments or mutations"
+    all-tools-lore: "&7Open the extended menu"
+    players-online: "&7Players: &f%count%"
+    tasks: "&7Tasks: &f%count%"
+    inbox: "&aMy tasks"
+    simulator: "&bSecurity Simulator"
+    title: "&8Moderation center"
+    players: "&aPlayers"
+    investigations: "&bInvestigations"
+    punishments: "&cPunishments"
+    security: "&6Security"
+    system: "&dSystem"
+    all-tools: "&eAll tools"
+  category:
+    players:
+      title: "&8Players"
+    investigations:
+      title: "&8Investigations"
+    punishments:
+      title: "&8Punishments"
+    security:
+      title: "&8Security"
+    system:
+      title: "&8System"
+common:
+  actions:
+    home: "&e⌂ Home"
+    back: "&e« Back"
+    close: "&cClose"
+    open: "&eOpen"
+    claim: "&bClaim"
+    takeover: "&cTake over"
+    approve: "&aApprove"
+    reject: "&cReject"
+    search: "&bSearch"
+    filter: "&eFilter"
+    confirm: "&aConfirm"
+    cancel: "&cCancel"
+  status:
+    enabled: "&aON"
+    disabled: "&cOFF"
+    overdue: "&cOverdue"
+    on-time: "&aOn time"
+    assigned: "&aAssigned"
+    unassigned: "&7Unassigned"
+    compact: "&aCompact"
+    full: "&7Detailed"
+  yes: "yes"
+  no: "no"
+  unknown: "unknown"
+time:
+  days:
+    short: "d"
+  hours:
+    short: "h"
+  minutes:
+    short: "m"
+  seconds:
+    short: "s"
+enums:
+  case-status:
+    open: "open"
+    investigating: "investigating"
+    resolved: "resolved"
+    rejected: "rejected"
+  case-priority:
+    low: "low"
+    normal: "normal"
+    high: "high"
+    critical: "critical"

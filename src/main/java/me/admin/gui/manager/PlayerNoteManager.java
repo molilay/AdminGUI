@@ -26,7 +26,7 @@ public class PlayerNoteManager {
 
     public void addNote(UUID targetId, String targetName, String moderator, String note) {
         YamlConfiguration config = YamlConfiguration.loadConfiguration(noteFile);
-        List<Map<String, Object>> notes = (List<Map<String, Object>>) config.getList(targetId.toString(), new ArrayList<>());
+        List<Map<String, Object>> notes = readMaps(config.getList(targetId.toString()));
         Map<String, Object> entry = new LinkedHashMap<>();
         entry.put("moderator", moderator);
         entry.put("note", note);
@@ -34,16 +34,12 @@ public class PlayerNoteManager {
         entry.put("target", targetName);
         notes.add(entry);
         config.set(targetId.toString(), notes);
-        try {
-            config.save(noteFile);
-        } catch (IOException e) {
-            plugin.getLogger().warning("Failed to save note: " + e.getMessage());
-        }
+        YamlPersistenceService.saveYamlNow(plugin, noteFile, config, "player notes");
     }
 
     public List<String> getNotes(UUID targetId) {
         YamlConfiguration config = YamlConfiguration.loadConfiguration(noteFile);
-        List<Map<String, Object>> raw = (List<Map<String, Object>>) config.getList(targetId.toString(), new ArrayList<>());
+        List<Map<String, Object>> raw = readMaps(config.getList(targetId.toString()));
         List<String> result = new ArrayList<>();
         for (Map<String, Object> m : raw) {
             String moderator = String.valueOf(m.getOrDefault("moderator", "?"));
@@ -52,6 +48,18 @@ public class PlayerNoteManager {
             result.add("§7[" + date + "] §f" + note + " §8(§7" + moderator + "§8)");
         }
         Collections.reverse(result);
+        return result;
+    }
+
+    private static List<Map<String, Object>> readMaps(List<?> values) {
+        List<Map<String, Object>> result = new ArrayList<>();
+        if (values == null) return result;
+        for (Object value : values) {
+            if (!(value instanceof Map<?, ?> source)) continue;
+            Map<String, Object> copy = new LinkedHashMap<>();
+            source.forEach((key, item) -> copy.put(String.valueOf(key), item));
+            result.add(copy);
+        }
         return result;
     }
 }
