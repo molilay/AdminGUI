@@ -1,9 +1,12 @@
 name: AdvancedModeratorGUI
-version: 2.0.0
+version: 2.7.0
 main: me.admin.gui.AdvancedModeratorGUI
-api-version: '1.26'
+# Собрано и протестировано против Paper API 1.21.4; работает и на более новых сборках Paper.
+api-version: '1.21'
+# Плагин использует BukkitScheduler, поэтому на Folia он не запускается.
+folia-supported: false
 depend: [LuckPerms]
-softdepend: [Vault]
+softdepend: [Vault, PlaceholderAPI, AuthMe, ViaVersion, Dynmap, WorldGuard, VoiceChat]
 
 commands:
   mod:
@@ -17,7 +20,14 @@ commands:
   amgui:
     description: Управление плагином
     aliases: [am, admintool]
-    permission: amgui.admin
+  report:
+    description: Пожаловаться на игрока
+    aliases: [репорт, жалоба]
+    permission: amgui.report.use
+  appeal:
+    description: Подать апелляцию на бан
+    aliases: [апелляция]
+    permission: amgui.appeal.use
 
 permissions:
   amgui.*:
@@ -27,22 +37,84 @@ permissions:
       amgui.use: true
       amgui.admin: true
       amgui.player: true
+      amgui.kick: true
       amgui.ban: true
+      amgui.ban.exempt: true
+      amgui.kick.exempt: true
       amgui.freeze: true
+      amgui.freeze.exempt: true
       amgui.groups: true
       amgui.groups.edit: true
       amgui.groups.assign: true
       amgui.viewip: true
+      amgui.geoip: true
+      amgui.backup: true
+      amgui.backup.create: true
+      amgui.backup.restore: true
+      amgui.backup.verify: true
+      amgui.antiraid: true
+      amgui.antiraid.toggle: true
+      amgui.antiraid.bypass: true
+      amgui.doctor: true
       amgui.inventory.view: true
       amgui.inventory.edit: true
       amgui.logs: true
       amgui.staffchat: true
       amgui.warn: true
+      amgui.warn.escalate.ban: true
+      amgui.action.undo: true
+      amgui.action.undo.others: true
       amgui.mute: true
       amgui.alts: true
       amgui.rollback: true
       amgui.teleport: true
       amgui.notes: true
+      amgui.permissions: true
+      amgui.permissions.edit: true
+      amgui.investigate: true
+      amgui.investigation.center: true
+      amgui.alert: true
+      amgui.announce: true
+      amgui.export: true
+      amgui.protect: true
+      amgui.automod.bypass: true
+      amgui.report.use: true
+      amgui.report.staff: true
+      amgui.vanish: true
+      amgui.vanish.see: true
+      amgui.appeal.use: true
+      amgui.appeal.staff: true
+      amgui.coreprotect: true
+      amgui.staffmode: true
+      amgui.trial.mod: true
+      amgui.trial.confirm: true
+      amgui.templates: true
+      amgui.banwave: true
+      amgui.staffkits: true
+      amgui.staffactivity: true
+      amgui.evidence: true
+      amgui.evidence.add: true
+      amgui.evidence.remove: true
+      amgui.cases: true
+      amgui.cases.edit: true
+      amgui.cases.assign: true
+      amgui.cases.export: true
+      amgui.audit: true
+      amgui.report.resolve: true
+      amgui.report.delete: true
+      amgui.automod.view: true
+      amgui.automod.edit: true
+      amgui.automod.approve: true
+      amgui.inbox.view: true
+      amgui.inbox.claim: true
+      amgui.inbox.takeover: true
+      amgui.simulator: true
+      amgui.incident.view: true
+      amgui.incident.snapshot: true
+      amgui.privacy.purge: true
+      amgui.authme.manage: true
+      amgui.authme.sensitive: true
+      amgui.hierarchy.bypass: true
   amgui.use:
     description: Доступ к главному меню
     default: op
@@ -50,15 +122,27 @@ permissions:
     description: Админ-команды /amgui
     default: op
   amgui.player:
-    description: Управление игроками (кик, заморозка, тп)
+    description: Просмотр списка и карточек игроков
     default: op
     children:
       amgui.freeze: true
+  amgui.kick:
+    description: Кик игроков и массовый кик
+    default: op
   amgui.ban:
     description: Бан/разбан
     default: op
+  amgui.ban.exempt:
+    description: Иммунитет к бану
+    default: op
+  amgui.kick.exempt:
+    description: Иммунитет к кику
+    default: op
   amgui.freeze:
     description: Быстрая заморозка
+    default: op
+  amgui.freeze.exempt:
+    description: Иммунитет к заморозке
     default: op
   amgui.teleport:
     description: Телепортация к игроку/к себе
@@ -78,6 +162,33 @@ permissions:
   amgui.viewip:
     description: Просмотр IP игрока
     default: op
+  amgui.geoip:
+    description: Просмотр приблизительной геолокации IP
+    default: op
+  amgui.backup:
+    description: Создание и просмотр YAML-бэкапов
+    default: op
+  amgui.backup.create:
+    description: Создание YAML-бэкапов
+    default: op
+  amgui.backup.restore:
+    description: Подготовка и отмена восстановления YAML-бэкапа
+    default: op
+  amgui.backup.verify:
+    description: Проверка манифеста YAML-бэкапа
+    default: op
+  amgui.antiraid:
+    description: Просмотр состояния защиты от рейдов
+    default: op
+  amgui.antiraid.toggle:
+    description: Ручное включение и выключение AntiRaid lockdown
+    default: op
+  amgui.antiraid.bypass:
+    description: Обход ограничений AntiRaid
+    default: op
+  amgui.doctor:
+    description: Диагностика конфигурации и компонентов плагина
+    default: op
   amgui.inventory.view:
     description: Просмотр инвентарей
     default: op
@@ -93,6 +204,15 @@ permissions:
   amgui.warn:
     description: Предупреждения игроков
     default: op
+  amgui.warn.escalate.ban:
+    description: Ручная эскалация лимита WARN в BAN (также требует amgui.ban)
+    default: op
+  amgui.action.undo:
+    description: Отмена собственного последнего обратимого действия
+    default: op
+  amgui.action.undo.others:
+    description: Отмена действий, выполненных другим сотрудником
+    default: op
   amgui.mute:
     description: Мут игроков
     default: op
@@ -101,4 +221,142 @@ permissions:
     default: op
   amgui.rollback:
     description: Откат инвентаря
+    default: op
+  amgui.permissions:
+    description: Просмотр прав игрока
+    default: op
+  amgui.permissions.edit:
+    description: Редактирование прав игрока через GUI
+    default: op
+  amgui.investigate:
+    description: Режим расследования
+    default: op
+  amgui.investigation.center:
+    description: Единый центр расследования игрока
+    default: op
+  amgui.alert:
+    description: Отправка предупреждений
+    default: op
+  amgui.announce:
+    description: Глобальные анонсы
+    default: op
+  amgui.export:
+    description: Экспорт логов
+    default: op
+  amgui.protect:
+    description: Управление защищёнными игроками
+    default: op
+  amgui.automod.bypass:
+    description: Иммунитет к авто-модерации
+    default: op
+  amgui.report.use:
+    description: Возможность отправлять жалобы
+    default: true
+  amgui.report.staff:
+    description: Просмотр и управление жалобами
+    default: op
+  amgui.vanish:
+    description: Режим невидимки
+    default: op
+  amgui.vanish.see:
+    description: Видеть невидимых игроков
+    default: op
+  amgui.appeal.use:
+    description: Подача апелляций
+    default: true
+  amgui.appeal.staff:
+    description: Просмотр и обработка апелляций
+    default: op
+  amgui.coreprotect:
+    description: Просмотр истории блоков через CoreProtect
+    default: op
+  amgui.staffmode:
+    description: Режим персонала (набор предметов)
+    default: op
+  amgui.trial.mod:
+    description: Пробный модератор (нужно подтверждение)
+    default: op
+  amgui.trial.confirm:
+    description: Подтверждение действий пробных модераторов
+    default: op
+  amgui.templates:
+    description: Использование шаблонов наказаний
+    default: op
+  amgui.banwave:
+    description: Управление бан-волной
+    default: op
+  amgui.staffkits:
+    description: Получение наборов персонала
+    default: op
+  amgui.staffactivity:
+    description: Просмотр логов активности персонала
+    default: op
+  amgui.evidence:
+    description: Просмотр улик
+    default: op
+  amgui.evidence.add:
+    description: Добавление улик
+    default: op
+  amgui.evidence.remove:
+    description: Пометка улик удалёнными
+    default: op
+  amgui.cases:
+    description: Просмотр дел модерации
+    default: op
+  amgui.cases.edit:
+    description: Создание и редактирование дел модерации
+    default: op
+  amgui.cases.assign:
+    description: Назначение ответственного по делу
+    default: op
+  amgui.cases.export:
+    description: Экспорт досье дела
+    default: op
+  amgui.audit:
+    description: Просмотр защищённого журнала аудита
+    default: op
+  amgui.hierarchy.bypass:
+    description: Обход иерархии персонала при наказаниях
+    default: op
+  amgui.report.resolve:
+    description: Закрытие жалоб игроков
+    default: op
+  amgui.report.delete:
+    description: Удаление жалоб игроков
+    default: op
+  amgui.automod.view:
+    description: Просмотр AutoMod и очереди решений
+    default: op
+  amgui.automod.edit:
+    description: Изменение режима и правил AutoMod
+    default: op
+  amgui.automod.approve:
+    description: Одобрение и отклонение опасных действий AutoMod
+    default: op
+  amgui.authme.manage:
+    description: Управление состоянием AuthMe игрока
+    default: op
+  amgui.authme.sensitive:
+    description: Двухэтапные recovery/force-действия AuthMe
+    default: op
+  amgui.inbox.view:
+    description: Просмотр единой очереди задач модерации
+    default: op
+  amgui.inbox.claim:
+    description: Назначение свободной задачи модерации на себя
+    default: op
+  amgui.inbox.takeover:
+    description: Подтверждённый перехват задачи другого сотрудника
+    default: op
+  amgui.simulator:
+    description: Безопасная симуляция AutoMod и AntiRaid без действий
+    default: op
+  amgui.incident.view:
+    description: Просмотр общей хронологии инцидента без базы данных
+    default: op
+  amgui.incident.snapshot:
+    description: Создание YAML-снимков инцидента
+    default: op
+  amgui.privacy.purge:
+    description: Очистка приватных IP-связей и истории чата в памяти
     default: op

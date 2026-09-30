@@ -6,6 +6,8 @@ import me.admin.gui.manager.FreezeManager;
 import me.admin.gui.manager.InventoryRollbackManager;
 import me.admin.gui.manager.MuteManager;
 import me.admin.gui.manager.WarnManager;
+import me.admin.gui.manager.security.ModerationActionService;
+import me.admin.gui.manager.security.ActionReceiptManager;
 import me.admin.gui.integration.LuckPermsIntegration;
 import me.admin.gui.utils.ItemBuilder;
 import me.admin.gui.utils.SoundUtil;
@@ -16,7 +18,6 @@ import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.SkullMeta;
 
 import java.util.List;
 import java.util.Map;
@@ -49,6 +50,14 @@ public class PlayerCardGUI extends PaginatedGUI {
     private static final int SLOT_IP_INFO = 32;
     private static final int SLOT_SNAPSHOTS = 33;
     private static final int SLOT_UNBAN = 34;
+    private static final int SLOT_AUTHME = 35;
+    private static final int SLOT_PERMISSIONS = 37;
+    private static final int SLOT_IP_HISTORY = 38;
+    private static final int SLOT_CLIENT_INFO = 39;
+    private static final int SLOT_CHAT_HISTORY = 27;
+    private static final int SLOT_FLAG = 36;
+    private static final int SLOT_COREPROTECT = 40;
+    private static final int SLOT_UNDO = 41;
 
     public PlayerCardGUI(AdvancedModeratorGUI plugin, Player viewer, OfflinePlayer target) {
         super(plugin, viewer);
@@ -68,30 +77,42 @@ public class PlayerCardGUI extends PaginatedGUI {
 
     @Override
     protected Inventory buildInventory() {
-        Inventory inv = Bukkit.createInventory(null, SIZE, getTitle());
+        Inventory inv = Bukkit.createInventory(null, SIZE, me.admin.gui.utils.TextUtil.legacy(getTitle()));
 
         inv.setItem(SLOT_INFO, buildInfoItem());
-        inv.setItem(SLOT_KICK, buildKickItem());
-        inv.setItem(SLOT_BAN, buildBanItem());
-        inv.setItem(SLOT_IP_BAN, buildIpBanItem());
-        inv.setItem(SLOT_UNBAN, buildUnbanItem());
-        inv.setItem(SLOT_FREEZE, buildFreezeItem());
-        inv.setItem(SLOT_TP_TO, buildTpToItem());
-        inv.setItem(SLOT_TP_HERE, buildTpHereItem());
-        inv.setItem(SLOT_GIVE_ITEM, buildGiveItem());
-        inv.setItem(SLOT_CHANGE_GROUP, buildChangeGroupItem());
-        inv.setItem(SLOT_CLEAR_INV, buildClearInvItem());
-        inv.setItem(SLOT_VIEW_INV, buildViewInvItem());
-        inv.setItem(SLOT_VIEW_EC, buildViewEcItem());
-        inv.setItem(SLOT_WARN, buildWarnItem());
-        inv.setItem(SLOT_MUTE, buildMuteItem());
-        inv.setItem(SLOT_ALTS, buildAltsItem());
-        inv.setItem(SLOT_HISTORY, buildHistoryItem());
-        inv.setItem(SLOT_ROLLBACK, buildRollbackItem());
-        inv.setItem(SLOT_WARN_LIST, buildWarnListItem());
-        inv.setItem(SLOT_NOTES, buildNotesItem());
-        inv.setItem(SLOT_IP_INFO, buildIpInfoItem());
-        inv.setItem(SLOT_SNAPSHOTS, buildSnapshotsItem());
+        setIf(inv, SLOT_KICK, "amgui.kick", buildKickItem());
+        setIf(inv, SLOT_BAN, "amgui.ban", buildBanItem());
+        setIf(inv, SLOT_IP_BAN, "amgui.ban", buildIpBanItem());
+        setIf(inv, SLOT_UNBAN, "amgui.ban", buildUnbanItem());
+        setIf(inv, SLOT_FREEZE, "amgui.freeze", buildFreezeItem());
+        setIf(inv, SLOT_TP_TO, "amgui.teleport", buildTpToItem());
+        setIf(inv, SLOT_TP_HERE, "amgui.teleport", buildTpHereItem());
+        setIf(inv, SLOT_GIVE_ITEM, "amgui.player", buildGiveItem());
+        setIf(inv, SLOT_CHANGE_GROUP, "amgui.groups.assign", buildChangeGroupItem());
+        setIf(inv, SLOT_CLEAR_INV, "amgui.inventory.edit", buildClearInvItem());
+        setIf(inv, SLOT_VIEW_INV, "amgui.inventory.view", buildViewInvItem());
+        setIf(inv, SLOT_VIEW_EC, "amgui.inventory.view", buildViewEcItem());
+        setIf(inv, SLOT_WARN, "amgui.warn", buildWarnItem());
+        setIf(inv, SLOT_MUTE, "amgui.mute", buildMuteItem());
+        setIf(inv, SLOT_ALTS, "amgui.alts", buildAltsItem());
+        setIf(inv, SLOT_HISTORY, "amgui.logs", buildHistoryItem());
+        setIf(inv, SLOT_ROLLBACK, "amgui.rollback", buildRollbackItem());
+        setIf(inv, SLOT_WARN_LIST, "amgui.warn", buildWarnListItem());
+        setIf(inv, SLOT_NOTES, "amgui.notes", buildNotesItem());
+        setIf(inv, SLOT_IP_INFO, "amgui.viewip", buildIpInfoItem());
+        setIf(inv, SLOT_SNAPSHOTS, "amgui.rollback", buildSnapshotsItem());
+        setIf(inv, SLOT_AUTHME, "amgui.authme.manage", buildAuthMeItem());
+        setIf(inv, SLOT_PERMISSIONS, "amgui.permissions", buildPermissionsItem());
+        setIf(inv, SLOT_IP_HISTORY, "amgui.viewip", buildIpHistoryItem());
+        setIf(inv, SLOT_CLIENT_INFO, "amgui.player", buildClientInfoItem());
+        setIf(inv, SLOT_CHAT_HISTORY, "amgui.logs", buildChatHistoryItem());
+        setIf(inv, SLOT_FLAG, "amgui.notes", buildFlagItem());
+        setIf(inv, SLOT_COREPROTECT, "amgui.coreprotect", buildCoreProtectItem());
+        if (viewer.hasPermission("amgui.action.undo")) {
+            receipts().latestForTarget(target.getUniqueId())
+                    .filter(receipt -> receipts().canUndo(viewer, receipt))
+                    .ifPresent(receipt -> inv.setItem(SLOT_UNDO, buildUndoItem(receipt)));
+        }
 
         for (int i = 0; i < SIZE; i++) {
             if (inv.getItem(i) == null) inv.setItem(i, ItemBuilder.createFiller());
@@ -102,16 +123,32 @@ public class PlayerCardGUI extends PaginatedGUI {
         return inv;
     }
 
+    private void setIf(Inventory inventory, int slot, String permission, ItemStack item) {
+        if (viewer.hasPermission(permission)) inventory.setItem(slot, item);
+    }
+
     @Override
     public void open() {
-        viewer.openInventory(buildInventory());
-        plugin.getGuiManager().register(viewer.getUniqueId(), this);
+        super.open();
     }
 
     @Override
     public void onClick(int slot) {
+        onClick(slot, false);
+    }
+
+    @Override
+    public void onClick(int slot, boolean shift) {
         SoundUtil.click(viewer);
+        if (shift) {
+            handleShiftClick(slot);
+            return;
+        }
         switch (slot) {
+            case SLOT_INFO -> {
+                if (viewer.hasPermission("amgui.investigation.center")) new InvestigationCenterGUI(plugin, viewer, target).open();
+                else viewer.sendMessage(plugin.getConfigManager().getMessage("no-permission"));
+            }
             case SLOT_KICK -> handleKick();
             case SLOT_BAN -> handleBan();
             case SLOT_IP_BAN -> handleIpBan();
@@ -133,9 +170,16 @@ public class PlayerCardGUI extends PaginatedGUI {
             case SLOT_NOTES -> handleNotes();
             case SLOT_IP_INFO -> handleIpInfo();
             case SLOT_SNAPSHOTS -> handleSnapshots();
+            case SLOT_AUTHME -> handleAuthMe();
+            case SLOT_PERMISSIONS -> handlePermissions();
+            case SLOT_IP_HISTORY -> handleIpHistory();
+            case SLOT_CLIENT_INFO -> handleClientInfo();
+            case SLOT_CHAT_HISTORY -> handleChatHistory();
+            case SLOT_FLAG -> handleFlag();
+            case SLOT_COREPROTECT -> handleCoreProtect();
+            case SLOT_UNDO -> handleUndo();
             case SLOT_MAIN_MENU -> {
-                plugin.getGuiManager().unregister(viewer.getUniqueId());
-                new MainMenu(plugin, viewer).open();
+                openHome();
             }
             case SLOT_CLOSE -> close();
         }
@@ -144,20 +188,15 @@ public class PlayerCardGUI extends PaginatedGUI {
     private ItemStack buildInfoItem() {
         ItemBuilder builder = new ItemBuilder(Material.PLAYER_HEAD);
         if (target.getName() != null) {
-            ItemStack head = new ItemStack(Material.PLAYER_HEAD);
-            SkullMeta meta = (SkullMeta) head.getItemMeta();
-            if (meta != null) {
-                if (target.isOnline()) meta.setOwningPlayer(target.getPlayer());
-                else meta.setOwningPlayer(target);
-                head.setItemMeta(meta);
-            }
+            ItemStack head = plugin.getHeadCacheManager().getHead(target);
             builder = new ItemBuilder(head);
         }
 
         builder.name("&e" + target.getName());
         builder.lore(
                 "&7UUID: &f" + target.getUniqueId().toString().substring(0, 8) + "...",
-                "&7Статус: " + (target.isOnline() ? "&a✔ Онлайн" : "&c✘ Оффлайн")
+                "&7Статус: " + (target.isOnline() ? "&a✔ Онлайн" : "&c✘ Оффлайн"),
+                "", "&eКлик — центр расследования"
         );
 
         Player fresh = target.getPlayer();
@@ -189,7 +228,15 @@ public class PlayerCardGUI extends PaginatedGUI {
                 boolean muted = plugin.getMuteManager().isMuted(target.getUniqueId());
                 builder.lore("&7Мут: " + (muted ? "&cДа" : "&aНет"));
             }
+            String flag = plugin.getFlagManager().getFlag(target.getUniqueId());
+            if (flag != null) {
+                builder.lore("&7Флаг: " + plugin.getFlagManager().formatFlag(flag));
+            }
         } else {
+            String flag = plugin.getFlagManager().getFlag(target.getUniqueId());
+            if (flag != null) {
+                builder.lore("", "&7Флаг: " + plugin.getFlagManager().formatFlag(flag));
+            }
             String lastIp = plugin.getAltDetector().getLastIp(target.getUniqueId());
             if (!lastIp.isEmpty() && viewer.hasPermission("amgui.viewip")) {
                 builder.lore("", "&7Последний IP: &f" + lastIp);
@@ -228,7 +275,7 @@ public class PlayerCardGUI extends PaginatedGUI {
                     .name("&7Неизвестный игрок")
                     .build();
         }
-        boolean isBanned = Bukkit.getBanList(org.bukkit.BanList.Type.NAME).isBanned(name);
+        boolean isBanned = me.admin.gui.utils.BanService.isProfileBanned(target);
         return new ItemBuilder(isBanned ? Material.GREEN_WOOL : Material.GRAY_WOOL)
                 .name(isBanned ? "&aРазбанить" : "&7Не забанен")
                 .lore(isBanned ? "&7Нажмите для разбана" : "&7Игрок не в бане")
@@ -361,9 +408,11 @@ public class PlayerCardGUI extends PaginatedGUI {
     }
 
     private ItemStack buildIpInfoItem() {
-        return new ItemBuilder(Material.REDSTONE_TORCH)
-                .name("&cIP информация")
-                .lore("&7Все IP адреса игрока", "&7и даты входов")
+        boolean enabled = plugin.getGeoIpManager().isEnabled();
+        return new ItemBuilder(enabled ? Material.COMPASS : Material.BARRIER)
+                .name(enabled ? "&bГеолокация IP" : "&7Геолокация IP")
+                .lore(enabled ? new String[]{"&7Страна, регион, город и провайдер", "&7Результат является приблизительным", "", "&eКликните для просмотра"}
+                        : new String[]{"&cОтключено в config.yml"})
                 .build();
     }
 
@@ -372,6 +421,335 @@ public class PlayerCardGUI extends PaginatedGUI {
                 .name("&6Снапшоты инвентаря")
                 .lore("&7Список сохранённых", "&7копий инвентаря")
                 .build();
+    }
+
+    private ItemStack buildAuthMeItem() {
+        boolean hasAuth = plugin.getAuthMeIntegration().isPresent()
+                && plugin.getAuthMeIntegration().get().isEnabled();
+        String name = target.getName();
+        boolean registered = hasAuth && name != null
+                && plugin.getAuthMeIntegration().get().isRegistered(name);
+        return new ItemBuilder(Material.BOOK)
+                .name("&5AuthMe")
+                .lore(
+                        hasAuth ? (registered
+                                ? "&aЗарегистрирован"
+                                : "&cНе зарегистрирован")
+                                : "&7AuthMe не найден",
+                        "&7Кликните для управления"
+                )
+                .build();
+    }
+
+    private ItemStack buildPermissionsItem() {
+        return new ItemBuilder(Material.COMMAND_BLOCK)
+                .name("&bПрава игрока")
+                .lore("&7Просмотр и управление", "&7разрешениями игрока")
+                .build();
+    }
+
+    private ItemStack buildIpHistoryItem() {
+        return new ItemBuilder(Material.REDSTONE_TORCH)
+                .name("&cИстория IP")
+                .lore("&7Все IP адреса и даты входов")
+                .build();
+    }
+
+    private ItemStack buildClientInfoItem() {
+        Player online = target.isOnline() ? target.getPlayer() : null;
+        boolean canShowClient = online != null;
+        ItemBuilder builder = new ItemBuilder(Material.COMPARATOR)
+                .name("&6Моды и клиент")
+                .lore("&7Кликните для полной информации");
+        if (canShowClient) {
+            String modLoader = me.admin.gui.integration.ViaVersionIntegration.detectServerModLoader();
+            if (modLoader != null) {
+                builder.lore("&7Загрузчик модов: " + modLoader);
+            }
+            try {
+                String brand = online.getClientBrandName();
+                if (brand != null) {
+                    builder.lore("&7Клиент: &f" + brand);
+                }
+            } catch (Exception ignored) {}
+            var via = plugin.getViaVersionIntegration();
+            if (via.isPresent() && via.get().isEnabled()) {
+                int proto = via.get().getProtocolVersion(online);
+                if (proto > 0) {
+                    builder.lore("&7Версия: &f" + via.get().getMinecraftVersion(proto));
+                }
+            }
+        } else {
+            builder.lore("&cИгрок оффлайн");
+        }
+        return builder.build();
+    }
+
+    private ItemStack buildChatHistoryItem() {
+        return new ItemBuilder(Material.WRITABLE_BOOK)
+                .name("&eИстория чата")
+                .lore("&7Просмотр последних сообщений", "&7и команд игрока")
+                .build();
+    }
+
+    private ItemStack buildFlagItem() {
+        String flag = plugin.getFlagManager().getFlag(target.getUniqueId());
+        if (flag != null) {
+            return new ItemBuilder(Material.ENDER_CHEST)
+                    .name(plugin.getFlagManager().formatFlag(flag))
+                    .lore("&7Модератор: &f" + plugin.getFlagManager().getFlagModerator(target.getUniqueId()),
+                            "&7Шифт+клик — снять флаг")
+                    .glowing()
+                    .build();
+        }
+        return new ItemBuilder(Material.ENDER_CHEST)
+                .name("&7Поставить флаг")
+                .lore("&7Нажмите чтобы поставить флаг", "&7(например: hacker, scammer, trusted)")
+                .build();
+    }
+
+    private ItemStack buildCoreProtectItem() {
+        boolean cp = plugin.getCoreProtectIntegration().isEnabled();
+        return new ItemBuilder(cp ? Material.OBSIDIAN : Material.BARRIER)
+                .name(cp ? "&5CoreProtect" : "&7CoreProtect")
+                .lore(cp
+                        ? "&7Просмотр истории блоков игрока"
+                        : "&cCoreProtect не найден на сервере")
+                .build();
+    }
+
+    private ItemStack buildUndoItem(ActionReceiptManager.Receipt receipt) {
+        long remaining = Math.max(0L, (receipt.expiresAt() - System.currentTimeMillis()) / 1000L);
+        return new ItemBuilder(Material.RECOVERY_COMPASS)
+                .name("&aОтменить последнее действие")
+                .lore("&7Тип: &f" + receipt.type(), "&7Автор: &f" + receipt.actorName(),
+                        "&7Осталось: &f" + remaining + " сек.", "", "&eНажмите для безопасной отмены")
+                .glowing().build();
+    }
+
+    private void handleCoreProtect() {
+        if (!viewer.hasPermission("amgui.coreprotect")) {
+            viewer.sendMessage(plugin.getConfigManager().getMessage("no-permission"));
+            return;
+        }
+        plugin.getCoreProtectIntegration().sendBlockHistory(viewer, target);
+    }
+
+    private void handleUndo() {
+        var receipt = receipts().latestForTarget(target.getUniqueId()).orElse(null);
+        if (receipt == null || !receipts().canUndo(viewer, receipt)) {
+            viewer.sendMessage("§cНет доступного обратимого действия.");
+            return;
+        }
+        new ConfirmGUI(plugin, viewer, "§eОтменить " + receipt.type() + " для " + target.getName() + "?", () -> {
+            var result = receipts().undo(viewer, receipt.id());
+            viewer.sendMessage((result.success() ? "§a✓ " : "§c") + result.message());
+            if (result.success()) SoundUtil.success(viewer); else SoundUtil.error(viewer);
+            refresh();
+        }).open();
+    }
+
+    private void handleAuthMe() {
+        if (!viewer.hasPermission("amgui.authme.manage")) {
+            viewer.sendMessage(plugin.getConfigManager().getMessage("no-permission"));
+            return;
+        }
+        boolean hasAuth = plugin.getAuthMeIntegration().isPresent()
+                && plugin.getAuthMeIntegration().get().isEnabled();
+        if (!hasAuth) {
+            viewer.sendMessage("§cAuthMe не подключён на сервере.");
+            return;
+        }
+        new AuthMeGUI(plugin, viewer, target).open();
+    }
+
+    private void handlePermissions() {
+        if (!viewer.hasPermission("amgui.permissions")) {
+            viewer.sendMessage(plugin.getConfigManager().getMessage("no-permission"));
+            return;
+        }
+        new PermissionListGUI(plugin, viewer, target).open();
+    }
+
+    private void handleIpHistory() {
+        if (!viewer.hasPermission("amgui.viewip")) {
+            viewer.sendMessage(plugin.getConfigManager().getMessage("no-permission"));
+            return;
+        }
+        new IpHistoryGUI(plugin, viewer, target).open();
+    }
+
+    private void handleClientInfo() {
+        Player online = target.isOnline() ? target.getPlayer() : null;
+        if (online == null) {
+            viewer.sendMessage("§cИгрок оффлайн.");
+            return;
+        }
+        viewer.sendMessage("§8┌─ §6Моды и клиент §8— §f" + target.getName());
+        viewer.sendMessage("§8│");
+
+        try {
+            String brand = online.getClientBrandName();
+            viewer.sendMessage("§8│ §7§lБренд (client brand):");
+            viewer.sendMessage("§8│ §f" + (brand != null ? brand : "§7Неизвестно"));
+            viewer.sendMessage("§8│");
+        } catch (Exception ignored) {}
+
+        String modLoader = me.admin.gui.integration.ViaVersionIntegration.detectServerModLoader();
+        if (modLoader != null) {
+            viewer.sendMessage("§8│ §7§lЗагрузчик модов (сервер):");
+            viewer.sendMessage("§8│ " + modLoader + " §7(на сервере есть моды)");
+            viewer.sendMessage("§8│");
+        }
+
+        var via = plugin.getViaVersionIntegration();
+        me.admin.gui.integration.ViaVersionIntegration.ClientInfoResult rich = via.isPresent() && via.get().isEnabled()
+                ? via.get().getRichClientInfo(online)
+                : me.admin.gui.integration.ViaVersionIntegration.ClientInfoResult.fromPlayer(online);
+
+        viewer.sendMessage("§8│ §7§lОсновное:");
+        viewer.sendMessage("§8│ §7Locale: §f" + rich.locale + "  §7Пинг: §f" + rich.ping + "ms");
+        viewer.sendMessage("§8│");
+
+        if (rich.protocolVersion > 0) {
+            viewer.sendMessage("§8│ §7§lПротокол (через ViaVersion):");
+            viewer.sendMessage("§8│ §7Версия клиента: §f" + rich.minecraftVersion);
+            if (rich.serverProtocol > 0 && rich.protocolVersion != rich.serverProtocol) {
+                viewer.sendMessage("§8│ §7Серверный протокол: §f" + rich.serverProtocol + " (Via переводит)");
+            }
+            viewer.sendMessage("§8│");
+        }
+
+        if (rich.clientType != null) {
+            viewer.sendMessage("§8│ §7§lТип клиента (ViaVersion):");
+            viewer.sendMessage("§8│ §f" + rich.clientType);
+            viewer.sendMessage("§8│");
+        }
+
+        if (rich.clientModLoader != null) {
+            viewer.sendMessage("§8│ §7§lЗагрузчик/мод (ViaVersion):");
+            viewer.sendMessage("§8│ §f" + rich.clientModLoader);
+            viewer.sendMessage("§8│");
+        }
+
+        String brandFamily = me.admin.gui.integration.ViaVersionIntegration.detectBrandFamily(online);
+        viewer.sendMessage("§8│ §7§lСемейство бренда:");
+        viewer.sendMessage("§8│ " + brandFamily);
+        viewer.sendMessage("§8│");
+
+        viewer.sendMessage("§8│ §7§lЗаметка:");
+        viewer.sendMessage("§8│ §7Полный список модов игрока виден только");
+        viewer.sendMessage("§8│ §7на Forge/Fabric сервере. На Paper виден только");
+        viewer.sendMessage("§8│ §7бренд клиента и версия протокола.");
+        viewer.sendMessage("§8└─");
+
+        plugin.getLogger().info("Клиентская информация для " + target.getName() + ": brand=" + rich.brandRaw
+                + ", protocol=" + rich.protocolVersion + ", type=" + rich.clientType + ", modLoader=" + rich.clientModLoader);
+    }
+
+    private void handleChatHistory() {
+        if (!viewer.hasPermission("amgui.logs")) {
+            viewer.sendMessage(plugin.getConfigManager().getMessage("no-permission"));
+            return;
+        }
+        new ChatHistoryGUI(plugin, viewer, target).open();
+    }
+
+    private void handleFlag() {
+        if (!viewer.hasPermission("amgui.notes")) {
+            viewer.sendMessage(plugin.getConfigManager().getMessage("no-permission"));
+            return;
+        }
+        String existing = plugin.getFlagManager().getFlag(target.getUniqueId());
+        if (existing != null) {
+            new ConfirmGUI(plugin, viewer, "§cСнять флаг с " + target.getName() + "?", () -> {
+                plugin.getFlagManager().removeFlag(target.getUniqueId());
+                SoundUtil.success(viewer);
+                viewer.sendMessage("§a✓ Флаг снят.");
+                refresh();
+            }).open();
+        } else {
+            viewer.closeInventory();
+            plugin.getChatInputManager().awaitInput(viewer, "§eВведите текст флага (hacker, scammer, trusted, vip...):", input -> {
+                String tag = input.trim().toLowerCase();
+                if (tag.isEmpty()) {
+                    viewer.sendMessage("§cФлаг не может быть пустым.");
+                    new PlayerCardGUI(plugin, viewer, target).open();
+                    return;
+                }
+                plugin.getFlagManager().setFlag(target.getUniqueId(), target.getName(), viewer.getName(), tag);
+                SoundUtil.success(viewer);
+                viewer.sendMessage("§a✓ Флаг " + plugin.getFlagManager().formatFlag(tag) + " §aустановлен.");
+                new PlayerCardGUI(plugin, viewer, target).open();
+            });
+        }
+    }
+
+    private void handleShiftClick(int slot) {
+        if (slot == SLOT_KICK) {
+            if (!viewer.hasPermission("amgui.kick")) return;
+            if (!canAct("kick")) return;
+            if (!requireOnline()) return;
+            Player fresh = target.getPlayer();
+            if (fresh != null && fresh.hasPermission("amgui.kick.exempt")) {
+                viewer.sendMessage("§cИммунитет."); return;
+            }
+            new ConfirmGUI(plugin, viewer, "§cПодтвердить быстрый кик " + target.getName() + "?", () -> {
+                Player online = target.getPlayer();
+                if (online == null || !online.isOnline()) { viewer.sendMessage("§cИгрок уже оффлайн."); return; }
+                if (!executePreflight(ModerationActionService.Action.KICK)) return;
+                plugin.getInventoryRollbackManager().saveSnapshot(online, "quick_kick");
+                online.kick(me.admin.gui.utils.TextUtil.legacy("§cБыстрый кик от модератора."));
+                plugin.getDatabaseManager().logPunishment("quick_kick", viewer.getName(), target.getName(), "Shift+кик", -1);
+                plugin.getAuditManager().record(viewer, "punishment.quick-kick", target.getName(), target.getUniqueId(), "confirmed=true");
+                SoundUtil.success(viewer);
+                viewer.sendMessage("§a✓ Быстрый кик: " + target.getName());
+            }).open();
+            return;
+        }
+        if (slot == SLOT_BAN && viewer.hasPermission("amgui.ban")) {
+            if (!canAct("ban")) return;
+            String name = target.getName();
+            if (name == null) return;
+            Player online = target.getPlayer();
+            if (online != null && online.isOnline() && online.hasPermission("amgui.ban.exempt")) {
+                viewer.sendMessage("§cИммунитет."); return;
+            }
+            new ConfirmGUI(plugin, viewer, "§4Подтвердить быстрый бан " + name + "?", () -> {
+                if (!executePreflight(ModerationActionService.Action.BAN)) return;
+                String reason = "Shift+бан";
+                me.admin.gui.utils.BanService.banProfile(target, reason, null, viewer.getName());
+                receipts().record(viewer, target, ActionReceiptManager.Type.BAN, "");
+                Player player = target.getPlayer();
+                if (player != null && player.isOnline()) player.kick(me.admin.gui.utils.TextUtil.legacy("§cВы забанены.\n§7Причина: " + reason));
+                plugin.getDatabaseManager().logPunishment("quick_ban", viewer.getName(), name, reason, -1);
+                plugin.getAuditManager().record(viewer, "punishment.quick-ban", name, target.getUniqueId(), "confirmed=true");
+                SoundUtil.success(viewer);
+                viewer.sendMessage("§c✓ Быстрый бан: " + name);
+            }).open();
+            return;
+        }
+        if (slot == SLOT_FREEZE && viewer.hasPermission("amgui.freeze")) {
+            if (!canAct("freeze")) return;
+            if (!requireOnline()) return;
+            Player fresh = target.getPlayer();
+            if (fresh != null && fresh.hasPermission("amgui.freeze.exempt")) {
+                viewer.sendMessage("§cИммунитет."); return;
+            }
+            FreezeManager fm = plugin.getFreezeManager();
+            if (!executePreflight(ModerationActionService.Action.FREEZE)) return;
+            boolean previouslyFrozen = fm.isFrozen(fresh);
+            if (previouslyFrozen) {
+                fm.unfreeze(fresh);
+                viewer.sendMessage("§a✓ Быстрая разморозка: " + target.getName());
+            } else {
+                fm.freeze(fresh);
+                viewer.sendMessage("§c✓ Быстрая заморозка: " + target.getName());
+            }
+            receipts().record(viewer, target, ActionReceiptManager.Type.FREEZE,
+                    Boolean.toString(previouslyFrozen));
+            SoundUtil.success(viewer);
+        }
     }
 
     private void sendDiscord(String type, String player, String reason, String duration) {
@@ -388,52 +766,100 @@ public class PlayerCardGUI extends PaginatedGUI {
     }
 
     private void handleKick() {
-        if (!viewer.hasPermission("amgui.player") || !viewer.hasPermission("amgui.use")) return;
-        if (!requireOnline()) return;
+        if (!viewer.hasPermission("amgui.kick") || !viewer.hasPermission("amgui.use")) return;
+        if (!canAct("kick")) return;
         Player fresh = target.getPlayer();
+        if (fresh == null || !fresh.isOnline()) {
+            viewer.sendMessage(plugin.getConfigManager().getMessage("player-not-found"));
+            return;
+        }
+        if (fresh.hasPermission("amgui.kick.exempt")) {
+            viewer.sendMessage("§cЭтот игрок имеет иммунитет к кику.");
+            return;
+        }
+        Player captured = fresh;
         new ReasonSelectGUI(plugin, viewer, "kick", reason -> {
-            plugin.getInventoryRollbackManager().saveSnapshot(fresh, "kick: " + reason);
-            fresh.kickPlayer(plugin.getConfigManager().getFormattedMessage("kicked", "reason", reason));
-            plugin.getDatabaseManager().logPunishment("kick", viewer.getName(), target.getName(), reason, -1);
-            plugin.getConfigManager().broadcastPunishment("kick", target.getName(), reason);
-            sendDiscord("kick", target.getName(), reason, "—");
-            SoundUtil.success(viewer);
-            viewer.sendMessage("§a✓ Игрок " + target.getName() + " кикнут.");
+            new ConfirmGUI(plugin, viewer, "§cКикнуть " + target.getName() + "?",
+                () -> {
+                    Player now = target.getPlayer();
+                    if (now == null || !now.isOnline()) {
+                        viewer.sendMessage("§cИгрок уже оффлайн.");
+                        return;
+                    }
+                    if (!executePreflight(ModerationActionService.Action.KICK)) return;
+                    plugin.getInventoryRollbackManager().saveSnapshot(now, "kick: " + reason);
+                    now.kick(me.admin.gui.utils.TextUtil.legacy(plugin.getConfigManager().getFormattedMessage("kicked", "reason", reason)));
+                    plugin.getDatabaseManager().logPunishment("kick", viewer.getName(), target.getName(), reason, -1);
+                    plugin.getConfigManager().broadcastPunishment("kick", target.getName(), reason);
+                    plugin.getConfigManager().sendPunishmentTitle(viewer, "kick", target.getName());
+                    plugin.getConfigManager().playPunishmentSound(viewer, "kick");
+                    sendDiscord("kick", target.getName(), reason, "—");
+                    SoundUtil.success(viewer);
+                    viewer.sendMessage("§a✓ Игрок " + target.getName() + " кикнут.");
+                },
+                () -> new PlayerCardGUI(plugin, viewer, target).open()
+            ).open();
         }).open();
     }
 
     private void handleBan() {
         if (!viewer.hasPermission("amgui.ban") || !viewer.hasPermission("amgui.use")) return;
+        if (!canAct("ban")) return;
         String banName = target.getName();
         if (banName == null) { viewer.sendMessage("§cНеизвестный игрок."); return; }
+        Player online = target.getPlayer();
+        if (online != null && online.isOnline() && online.hasPermission("amgui.ban.exempt")) {
+            viewer.sendMessage("§cЭтот игрок имеет иммунитет к бану.");
+            return;
+        }
         new BanDurationGUI(plugin, viewer, "ban", duration -> {
-            Player fresh = target.getPlayer();
             if (duration <= 0) {
                 new ReasonSelectGUI(plugin, viewer, "ban", reason -> {
-                    if (fresh != null && fresh.isOnline())
-                        plugin.getInventoryRollbackManager().saveSnapshot(fresh, "ban: " + reason);
-                    Bukkit.getBanList(org.bukkit.BanList.Type.NAME).addBan(banName, reason, null, viewer.getName());
-                    if (fresh != null && fresh.isOnline())
-                        fresh.kickPlayer("§cВы забанены навсегда.\n§7Причина: " + reason);
-                    plugin.getDatabaseManager().logPunishment("ban", viewer.getName(), banName, reason, -1);
-                    plugin.getConfigManager().broadcastPunishment("ban", banName, reason);
-                    sendDiscord("ban", banName, reason, "Навсегда");
-                    SoundUtil.success(viewer);
-                    viewer.sendMessage("§c✓ Игрок " + banName + " забанен навсегда.");
+                    new ConfirmGUI(plugin, viewer, "§cЗабанить " + banName + " навсегда?",
+                        () -> {
+                            if (!executePreflight(ModerationActionService.Action.BAN)) return;
+                            Player now = target.getPlayer();
+                            if (now != null && now.isOnline())
+                                plugin.getInventoryRollbackManager().saveSnapshot(now, "ban: " + reason);
+                            me.admin.gui.utils.BanService.banProfile(target, reason, null, viewer.getName());
+                            receipts().record(viewer, target, ActionReceiptManager.Type.BAN, "");
+                            if (now != null && now.isOnline())
+                                now.kick(me.admin.gui.utils.TextUtil.legacy("§cВы забанены навсегда.\n§7Причина: " + reason));
+                            plugin.getDatabaseManager().logPunishment("ban", viewer.getName(), banName, reason, -1);
+                            plugin.getConfigManager().broadcastPunishment("ban", banName, reason);
+                            plugin.getConfigManager().sendPunishmentTitle(viewer, "ban", banName);
+                            plugin.getConfigManager().playPunishmentSound(viewer, "ban");
+                            sendDiscord("ban", banName, reason, "Навсегда");
+                            SoundUtil.success(viewer);
+                            viewer.sendMessage("§c✓ Игрок " + banName + " забанен навсегда.");
+                        },
+                        () -> new PlayerCardGUI(plugin, viewer, target).open()
+                    ).open();
                 }).open();
             } else {
                 new ReasonSelectGUI(plugin, viewer, "ban", reason -> {
-                    if (fresh != null && fresh.isOnline())
-                        plugin.getInventoryRollbackManager().saveSnapshot(fresh, "tempban: " + reason);
-                    long expires = System.currentTimeMillis() + (duration * 1000);
-                    Bukkit.getBanList(org.bukkit.BanList.Type.NAME).addBan(banName, reason, new java.util.Date(expires), viewer.getName());
-                    if (fresh != null && fresh.isOnline())
-                        fresh.kickPlayer("§cВы забанены на " + TimeUtils.formatDuration(duration) + ".\n§7Причина: " + reason);
-                    plugin.getDatabaseManager().logPunishment("tempban", viewer.getName(), banName, reason, duration);
-                    plugin.getConfigManager().broadcastPunishment("tempban", banName, reason);
-                    sendDiscord("tempban", banName, reason, TimeUtils.formatDuration(duration));
-                    SoundUtil.success(viewer);
-                    viewer.sendMessage("§c✓ Игрок " + banName + " забанен на " + TimeUtils.formatDuration(duration) + ".");
+                    new ConfirmGUI(plugin, viewer, "§cЗабанить " + banName + " на " + TimeUtils.formatDuration(duration) + "?",
+                        () -> {
+                            if (!executePreflight(ModerationActionService.Action.TEMPBAN)) return;
+                            Player now = target.getPlayer();
+                            if (now != null && now.isOnline())
+                                plugin.getInventoryRollbackManager().saveSnapshot(now, "tempban: " + reason);
+                            long expires = System.currentTimeMillis() + (duration * 1000);
+                            me.admin.gui.utils.BanService.banProfile(target, reason,
+                                    java.time.Instant.ofEpochMilli(expires), viewer.getName());
+                            receipts().record(viewer, target, ActionReceiptManager.Type.TEMPBAN, "");
+                            if (now != null && now.isOnline())
+                                now.kick(me.admin.gui.utils.TextUtil.legacy("§cВы забанены на " + TimeUtils.formatDuration(duration) + ".\n§7Причина: " + reason));
+                            plugin.getDatabaseManager().logPunishment("tempban", viewer.getName(), banName, reason, duration);
+                            plugin.getConfigManager().broadcastPunishment("tempban", banName, reason);
+                            plugin.getConfigManager().sendPunishmentTitle(viewer, "ban", banName);
+                            plugin.getConfigManager().playPunishmentSound(viewer, "ban");
+                            sendDiscord("tempban", banName, reason, TimeUtils.formatDuration(duration));
+                            SoundUtil.success(viewer);
+                            viewer.sendMessage("§c✓ Игрок " + banName + " забанен на " + TimeUtils.formatDuration(duration) + ".");
+                        },
+                        () -> new PlayerCardGUI(plugin, viewer, target).open()
+                    ).open();
                 }).open();
             }
         }).open();
@@ -441,6 +867,7 @@ public class PlayerCardGUI extends PaginatedGUI {
 
     private void handleIpBan() {
         if (!viewer.hasPermission("amgui.ban")) return;
+        if (!canAct("ipban")) return;
         String name = target.getName();
         if (name == null) { viewer.sendMessage("§cНеизвестный игрок."); return; }
         String ip = plugin.getAltDetector().getLastIp(target.getUniqueId());
@@ -449,28 +876,36 @@ public class PlayerCardGUI extends PaginatedGUI {
             return;
         }
         new ReasonSelectGUI(plugin, viewer, "ban", reason -> {
-            Bukkit.getBanList(org.bukkit.BanList.Type.IP).addBan(ip, reason, null, viewer.getName());
-            Bukkit.getBanList(org.bukkit.BanList.Type.NAME).addBan(name, reason, null, viewer.getName());
-            Player fresh = target.getPlayer();
-            if (fresh != null && fresh.isOnline()) {
-                plugin.getInventoryRollbackManager().saveSnapshot(fresh, "ipban: " + reason);
-                fresh.kickPlayer("§cВы забанены по IP.\n§7Причина: " + reason);
-            }
-            plugin.getDatabaseManager().logPunishment("ban", viewer.getName(), name, "IP-BAN: " + reason, -1);
-            sendDiscord("ban", name, "IP-BAN: " + reason, "Навсегда");
-            SoundUtil.success(viewer);
-            viewer.sendMessage("§c✓ IP-бан: " + name + " (" + ip + ")");
-            // Ban all alts
-            Map<String, UUID> alts = plugin.getAltDetector().findAltUuids(target.getUniqueId());
-            for (Map.Entry<String, UUID> e : alts.entrySet()) {
-                if (!e.getKey().equalsIgnoreCase(name)) {
-                    Bukkit.getBanList(org.bukkit.BanList.Type.NAME).addBan(e.getKey(), "IP-бан " + name, null, viewer.getName());
-                    plugin.getDatabaseManager().logPunishment("ban", viewer.getName(), e.getKey(), "IP-BAN alt: " + reason, -1);
-                    Player altP = Bukkit.getPlayer(e.getValue());
-                    if (altP != null) altP.kickPlayer("§cIP-бан.\n§7Причина: " + reason);
-                }
-            }
-            if (alts.size() > 1) viewer.sendMessage("§c✓ Также забанено " + (alts.size() - 1) + " альтов.");
+            new ConfirmGUI(plugin, viewer, "§cЗабанить по IP " + name + "?",
+                () -> {
+                    if (!executePreflight(ModerationActionService.Action.IP_BAN)) return;
+                    me.admin.gui.utils.BanService.banIp(ip, reason, null, viewer.getName());
+                    me.admin.gui.utils.BanService.banProfile(target, reason, null, viewer.getName());
+                    Player fresh = target.getPlayer();
+                    if (fresh != null && fresh.isOnline()) {
+                        plugin.getInventoryRollbackManager().saveSnapshot(fresh, "ipban: " + reason);
+                        fresh.kick(me.admin.gui.utils.TextUtil.legacy("§cВы забанены по IP.\n§7Причина: " + reason));
+                    }
+                    plugin.getDatabaseManager().logPunishment("ban", viewer.getName(), name, "IP-BAN: " + reason, -1);
+                    plugin.getConfigManager().sendPunishmentTitle(viewer, "ban", name);
+                    plugin.getConfigManager().playPunishmentSound(viewer, "ban");
+                    sendDiscord("ban", name, "IP-BAN: " + reason, "Навсегда");
+                    SoundUtil.success(viewer);
+                    viewer.sendMessage("§c✓ IP-бан: " + name + " (" + ip + ")");
+                    // Ban all alts
+                    Map<String, UUID> alts = plugin.getAltDetector().findAltUuids(target.getUniqueId());
+                    for (Map.Entry<String, UUID> e : alts.entrySet()) {
+                        if (!e.getKey().equalsIgnoreCase(name)) {
+                            me.admin.gui.utils.BanService.banProfile(e.getKey(), "IP-бан " + name, null, viewer.getName());
+                            plugin.getDatabaseManager().logPunishment("ban", viewer.getName(), e.getKey(), "IP-BAN alt: " + reason, -1);
+                            Player altP = Bukkit.getPlayer(e.getValue());
+                            if (altP != null) altP.kick(me.admin.gui.utils.TextUtil.legacy("§cIP-бан.\n§7Причина: " + reason));
+                        }
+                    }
+                    if (alts.size() > 1) viewer.sendMessage("§c✓ Также забанено " + (alts.size() - 1) + " альтов.");
+                },
+                () -> new PlayerCardGUI(plugin, viewer, target).open()
+            ).open();
         }).open();
     }
 
@@ -478,9 +913,9 @@ public class PlayerCardGUI extends PaginatedGUI {
         if (!viewer.hasPermission("amgui.ban")) return;
         String name = target.getName();
         if (name == null) { viewer.sendMessage("§cНеизвестный игрок."); return; }
-        if (Bukkit.getBanList(org.bukkit.BanList.Type.NAME).isBanned(name)) {
+        if (me.admin.gui.utils.BanService.isProfileBanned(target)) {
             new ConfirmGUI(plugin, viewer, "§cРазбанить " + name + "?", () -> {
-                Bukkit.getBanList(org.bukkit.BanList.Type.NAME).pardon(name);
+                me.admin.gui.utils.BanService.pardonProfile(target);
                 plugin.getDatabaseManager().logPunishment("unban", viewer.getName(), name, "Разбан", -1);
                 sendDiscord("unban", name, "Разбан", "—");
                 SoundUtil.success(viewer);
@@ -494,43 +929,71 @@ public class PlayerCardGUI extends PaginatedGUI {
 
     private void handleFreeze() {
         if (!viewer.hasPermission("amgui.freeze")) return;
+        if (!canAct("freeze")) return;
         if (!requireOnline()) return;
         Player fresh = target.getPlayer();
-        FreezeManager fm = plugin.getFreezeManager();
-        if (fm.isFrozen(fresh)) {
-            fm.unfreeze(fresh);
-            plugin.getDatabaseManager().logPunishment("unfreeze", viewer.getName(), target.getName(), "Разморозка", -1);
-            sendDiscord("unfreeze", target.getName(), "Разморозка", "—");
-            SoundUtil.success(viewer);
-        } else {
-            fm.freeze(fresh);
-            plugin.getDatabaseManager().logPunishment("freeze", viewer.getName(), target.getName(), "Заморозка", -1);
-            sendDiscord("freeze", target.getName(), "Заморозка", "—");
-            SoundUtil.success(viewer);
+        if (fresh != null && fresh.hasPermission("amgui.freeze.exempt")) {
+            viewer.sendMessage("§cЭтот игрок имеет иммунитет к заморозке.");
+            return;
         }
-        refresh();
+        FreezeManager fm = plugin.getFreezeManager();
+        boolean frozen = fm.isFrozen(fresh);
+        new ConfirmGUI(plugin, viewer, (frozen ? "§aРазморозить " : "§bЗаморозить ") + target.getName() + "?",
+            () -> {
+                Player current = target.getPlayer();
+                if (current == null || !current.isOnline()) {
+                    viewer.sendMessage("§cИгрок уже оффлайн.");
+                    return;
+                }
+                if (!executePreflight(ModerationActionService.Action.FREEZE)) return;
+                boolean currentlyFrozen = fm.isFrozen(current);
+                if (currentlyFrozen) {
+                    fm.unfreeze(current);
+                    plugin.getDatabaseManager().logPunishment("unfreeze", viewer.getName(), target.getName(), "Разморозка", -1);
+                    plugin.getConfigManager().sendPunishmentTitle(viewer, "unfreeze", target.getName());
+                    plugin.getConfigManager().playPunishmentSound(viewer, "unfreeze");
+                    sendDiscord("unfreeze", target.getName(), "Разморозка", "—");
+                } else {
+                    fm.freeze(current);
+                    plugin.getDatabaseManager().logPunishment("freeze", viewer.getName(), target.getName(), "Заморозка", -1);
+                    plugin.getConfigManager().sendPunishmentTitle(viewer, "freeze", target.getName());
+                    plugin.getConfigManager().playPunishmentSound(viewer, "freeze");
+                    sendDiscord("freeze", target.getName(), "Заморозка", "—");
+                }
+                receipts().record(viewer, target, ActionReceiptManager.Type.FREEZE,
+                        Boolean.toString(currentlyFrozen));
+                SoundUtil.success(viewer);
+                refresh();
+            },
+            () -> new PlayerCardGUI(plugin, viewer, target).open()
+        ).open();
     }
 
     private void handleTpTo() {
         if (!viewer.hasPermission("amgui.teleport")) return;
+        if (!executePreflight(ModerationActionService.Action.TELEPORT)) return;
         if (!requireOnline()) return;
         Player fresh = target.getPlayer();
         viewer.teleport(fresh);
         SoundUtil.success(viewer);
         viewer.sendMessage("§a✓ Телепортирован к " + target.getName());
+        plugin.getAuditManager().record(viewer, "teleport.to", target.getName(), target.getUniqueId(), "");
     }
 
     private void handleTpHere() {
         if (!viewer.hasPermission("amgui.teleport")) return;
+        if (!executePreflight(ModerationActionService.Action.TELEPORT)) return;
         if (!requireOnline()) return;
         Player fresh = target.getPlayer();
         fresh.teleport(viewer);
         SoundUtil.success(viewer);
         viewer.sendMessage("§a✓ " + target.getName() + " телепортирован к вам");
+        plugin.getAuditManager().record(viewer, "teleport.here", target.getName(), target.getUniqueId(), "");
     }
 
     private void handleGiveItem() {
         if (!viewer.hasPermission("amgui.inventory.edit")) return;
+        if (!executePreflight(ModerationActionService.Action.INVENTORY_EDIT)) return;
         if (!requireOnline()) return;
         Player fresh = target.getPlayer();
         ItemStack hand = viewer.getInventory().getItemInMainHand();
@@ -547,38 +1010,51 @@ public class PlayerCardGUI extends PaginatedGUI {
         viewer.getInventory().setItemInMainHand(null);
         SoundUtil.success(viewer);
         viewer.sendMessage("§a✓ Предмет выдан " + target.getName());
+        plugin.getAuditManager().record(viewer, "inventory.give", target.getName(), target.getUniqueId(),
+                toGive.getType() + " x" + toGive.getAmount());
     }
 
     private void handleChangeGroup() {
         if (!viewer.hasPermission("amgui.groups.assign")) return;
+        if (!canAct("group")) return;
         new AssignGroupGUI(plugin, viewer, target).open();
     }
 
     private void handleClearInv() {
         if (!viewer.hasPermission("amgui.inventory.edit")) return;
+        if (!canAct("inventory-clear")) return;
         if (!requireOnline()) return;
         Player fresh = target.getPlayer();
         new ConfirmGUI(plugin, viewer, "§cОчистить инвентарь " + target.getName() + "?", () -> {
-            fresh.getInventory().clear();
-            fresh.getInventory().setArmorContents(new ItemStack[4]);
-            fresh.getInventory().setExtraContents(new ItemStack[1]);
+            Player current = target.getPlayer();
+            if (current == null || !current.isOnline()) {
+                viewer.sendMessage("§cИгрок уже оффлайн.");
+                return;
+            }
+            if (!executePreflight(ModerationActionService.Action.INVENTORY_EDIT)) return;
+            current.getInventory().clear();
+            current.getInventory().setArmorContents(new ItemStack[4]);
+            current.getInventory().setExtraContents(new ItemStack[1]);
             SoundUtil.success(viewer);
             viewer.sendMessage(plugin.getConfigManager().getFormattedMessage("inventory-cleared", "player", target.getName()));
+            plugin.getAuditManager().record(viewer, "inventory.clear", target.getName(), target.getUniqueId(), "");
         }).open();
     }
 
     private void handleViewInv() {
         if (!viewer.hasPermission("amgui.inventory.view")) return;
+        if (!canAct("inventory-view")) return;
+        plugin.getAuditManager().record(viewer, "inventory.view", target.getName(), target.getUniqueId(), "inventory");
         Player fresh = target.getPlayer();
         if (fresh != null && fresh.isOnline()) {
             if (viewer.hasPermission("amgui.inventory.edit")) {
-                viewer.openInventory(fresh.getInventory());
+                plugin.getGuiManager().openEditableExternal(viewer, fresh.getInventory());
                 SoundUtil.success(viewer);
                 viewer.sendMessage("§eРедактирование инвентаря: " + (target.getName() != null ? target.getName() : "?"));
             } else {
-                Inventory frozen = Bukkit.createInventory(null, 45, "§8Инвентарь: " + (target.getName() != null ? target.getName() : "?"));
-                frozen.setContents(fresh.getInventory().getContents().clone());
-                viewer.openInventory(frozen);
+                Inventory frozen = ReadOnlyInventoryHolder.snapshot(45,
+                        "§8Инвентарь: " + (target.getName() != null ? target.getName() : "?"),
+                        fresh.getInventory().getContents());
                 registerReadOnly(frozen);
                 viewer.sendMessage("§eПросмотр инвентаря: " + (target.getName() != null ? target.getName() : "?") + " (только чтение)");
             }
@@ -588,33 +1064,39 @@ public class PlayerCardGUI extends PaginatedGUI {
                 viewer.sendMessage("§cНет кэшированного инвентаря для этого игрока (игрок должен хотя бы раз зайти на сервер).");
                 return;
             }
-            Inventory frozen = Bukkit.createInventory(null, 45, "§8Инвентарь: " + (target.getName() != null ? target.getName() : "?") + " (кэш)");
-            frozen.setContents(contents);
-            viewer.openInventory(frozen);
+            Inventory frozen = ReadOnlyInventoryHolder.snapshot(45,
+                    "§8Инвентарь: " + (target.getName() != null ? target.getName() : "?") + " (кэш)", contents);
             registerReadOnly(frozen);
             viewer.sendMessage("§eПросмотр кэшированного инвентаря: " + (target.getName() != null ? target.getName() : "?"));
         }
     }
 
     private void registerReadOnly(Inventory inv) {
-        plugin.getGuiManager().register(viewer.getUniqueId(), new PaginatedGUI(plugin, viewer) {
+        PaginatedGUI menu = new PaginatedGUI(plugin, viewer) {
             @Override public String getTitle() { return ""; }
             @Override public void buildContent() {}
             @Override public void onClick(int slot) {}
             @Override protected Inventory buildInventory() { return inv; }
-        });
+        };
+        plugin.getGuiManager().open(viewer, menu, inv, true);
     }
 
     private void handleViewEc() {
         if (!viewer.hasPermission("amgui.inventory.view")) return;
+        if (!canAct("inventory-view")) return;
+        plugin.getAuditManager().record(viewer, "inventory.view", target.getName(), target.getUniqueId(), "ender-chest");
         Player fresh = target.getPlayer();
         if (fresh != null && fresh.isOnline()) {
             if (viewer.hasPermission("amgui.inventory.edit")) {
-                viewer.openInventory(fresh.getEnderChest());
+                plugin.getGuiManager().openEditableExternal(viewer, fresh.getEnderChest());
                 viewer.sendMessage("§eРедактирование эндер-сундука: " + (target.getName() != null ? target.getName() : "?"));
             } else {
-                viewer.openInventory(fresh.getEnderChest());
-                viewer.sendMessage("§eПросмотр эндер-сундука: " + (target.getName() != null ? target.getName() : "?"));
+                Inventory frozen = ReadOnlyInventoryHolder.snapshot(fresh.getEnderChest().getSize(),
+                        "§8Эндер-сундук: " + (target.getName() != null ? target.getName() : "?"),
+                        fresh.getEnderChest().getContents());
+                registerReadOnly(frozen);
+                viewer.sendMessage("§eПросмотр эндер-сундука: " + (target.getName() != null ? target.getName() : "?")
+                        + " (только чтение)");
             }
         } else {
             ItemStack[] contents = plugin.getPlayerInventoryCache().getEnderChest(target.getUniqueId());
@@ -622,9 +1104,8 @@ public class PlayerCardGUI extends PaginatedGUI {
                 viewer.sendMessage("§cНет кэшированного эндер-сундука для этого игрока.");
                 return;
             }
-            Inventory frozen = Bukkit.createInventory(null, 27, "§8Эндер-сундук: " + (target.getName() != null ? target.getName() : "?") + " (кэш)");
-            frozen.setContents(contents);
-            viewer.openInventory(frozen);
+            Inventory frozen = ReadOnlyInventoryHolder.snapshot(27,
+                    "§8Эндер-сундук: " + (target.getName() != null ? target.getName() : "?") + " (кэш)", contents);
             registerReadOnly(frozen);
             viewer.sendMessage("§eПросмотр кэшированного эндер-сундука: " + (target.getName() != null ? target.getName() : "?"));
         }
@@ -632,11 +1113,19 @@ public class PlayerCardGUI extends PaginatedGUI {
 
     private void handleWarn() {
         if (!viewer.hasPermission("amgui.warn")) return;
+        if (!canAct("warn")) return;
         if (!requireOnline()) return;
         Player fresh = target.getPlayer();
         new ReasonSelectGUI(plugin, viewer, "warn", reason -> {
-            plugin.getWarnManager().warn(fresh, reason, viewer.getName());
-            int warnCount = plugin.getWarnManager().getWarnCount(fresh.getUniqueId());
+            Player current = target.getPlayer();
+            if (current == null || !current.isOnline()) {
+                viewer.sendMessage("§cИгрок уже оффлайн.");
+                return;
+            }
+            if (!executePreflight(ModerationActionService.Action.WARN)) return;
+            UUID warnId = plugin.getWarnManager().warn(current, reason, viewer.getName());
+            if (warnId != null) receipts().record(viewer, target, ActionReceiptManager.Type.WARN, warnId.toString());
+            int warnCount = plugin.getWarnManager().getWarnCount(current.getUniqueId());
             sendDiscord("warn", target.getName(), reason, warnCount + "/" + plugin.getWarnManager().getMaxWarns());
             SoundUtil.success(viewer);
             viewer.sendMessage(plugin.getConfigManager().getFormattedMessage("warned",
@@ -650,8 +1139,10 @@ public class PlayerCardGUI extends PaginatedGUI {
 
     private void handleMute() {
         if (!viewer.hasPermission("amgui.mute")) return;
+        if (!canAct("mute")) return;
         if (plugin.getMuteManager().isMuted(target.getUniqueId())) {
             new ConfirmGUI(plugin, viewer, "§aРазмьютить " + target.getName() + "?", () -> {
+                if (!executePreflight(ModerationActionService.Action.MUTE)) return;
                 plugin.getMuteManager().unmute(target.getUniqueId());
                 plugin.getDatabaseManager().logPunishment("unmute", viewer.getName(), target.getName(), "Размьючен", -1);
                 sendDiscord("unmute", target.getName(), "Размьючен", "—");
@@ -665,7 +1156,14 @@ public class PlayerCardGUI extends PaginatedGUI {
         Player fresh = target.getPlayer();
         new BanDurationGUI(plugin, viewer, "mute", duration -> {
             new ReasonSelectGUI(plugin, viewer, "mute", reason -> {
-                plugin.getMuteManager().mute(fresh, reason, viewer.getName(), duration);
+                Player current = target.getPlayer();
+                if (current == null || !current.isOnline()) {
+                    viewer.sendMessage("§cИгрок уже оффлайн.");
+                    return;
+                }
+                if (!executePreflight(ModerationActionService.Action.MUTE)) return;
+                plugin.getMuteManager().mute(current, reason, viewer.getName(), duration);
+                receipts().record(viewer, target, ActionReceiptManager.Type.MUTE, "");
                 sendDiscord("mute", target.getName(), reason, TimeUtils.formatDuration(duration));
                 SoundUtil.success(viewer);
                 viewer.sendMessage("§c✓ Игрок " + target.getName() + " замьючен.");
@@ -676,28 +1174,8 @@ public class PlayerCardGUI extends PaginatedGUI {
 
     private void handleAlts() {
         if (!viewer.hasPermission("amgui.alts")) return;
-        Map<String, UUID> altsMap = plugin.getAltDetector().findAltUuids(target.getUniqueId());
-        if (altsMap.isEmpty()) {
-            viewer.sendMessage(plugin.getConfigManager().getMessage("no-alts"));
-            return;
-        }
-        String alts = String.join("§7, §f", altsMap.keySet());
-        viewer.sendMessage(plugin.getConfigManager().getFormattedMessage("alts-found", "player", target.getName(), "alts", alts));
-
-        if (viewer.hasPermission("amgui.ban")) {
-            new ConfirmGUI(plugin, viewer, "§cЗабанить все алиасы " + target.getName() + "?", () -> {
-                String reason = "Альт-аккаунт " + target.getName();
-                for (Map.Entry<String, UUID> e : altsMap.entrySet()) {
-                    Bukkit.getBanList(org.bukkit.BanList.Type.NAME).addBan(e.getKey(), reason, null, viewer.getName());
-                    Player online = Bukkit.getPlayer(e.getValue());
-                    if (online != null) online.kickPlayer("§cВы забанены.\n§7Причина: " + reason);
-                    plugin.getDatabaseManager().logPunishment("ban", viewer.getName(), e.getKey(), reason, -1);
-                    sendDiscord("ban", e.getKey(), reason, "Альт-аккаунт");
-                }
-                SoundUtil.success(viewer);
-                viewer.sendMessage("§c✓ Забанено " + altsMap.size() + " алиасов.");
-            }).open();
-        }
+        if (!canAct("alts")) return;
+        new AltConnectionsGUI(plugin, viewer, target).open();
     }
 
     private void handleHistory() {
@@ -707,6 +1185,7 @@ public class PlayerCardGUI extends PaginatedGUI {
 
     private void handleRollback() {
         if (!viewer.hasPermission("amgui.rollback")) return;
+        if (!canAct("rollback")) return;
         if (!requireOnline()) return;
         Player fresh = target.getPlayer();
         var snapshots = plugin.getInventoryRollbackManager().getSnapshots(target.getUniqueId());
@@ -721,18 +1200,37 @@ public class PlayerCardGUI extends PaginatedGUI {
         }).open();
     }
 
+    private boolean canAct(String action) {
+        ModerationActionService.Action mapped = ModerationActionService.Action.fromSecurityAction(action);
+        if (mapped != null) {
+            var preview = ModerationActionService.preview(plugin, viewer, target, mapped);
+            if (preview.allowed()) return true;
+            viewer.sendMessage(plugin.getLocalizationManager().format("messages.action-denied",
+                    "&cДействие запрещено: %reason%", "reason", preview.reason()));
+            return false;
+        }
+        var decision = plugin.getPunishmentSecurityManager().validate(viewer, target, action);
+        if (decision.allowed()) return true;
+        viewer.sendMessage(plugin.getLocalizationManager().format("messages.action-denied",
+                "&cДействие запрещено: %reason%", "reason", decision.reason()));
+        return false;
+    }
+
+    private boolean executePreflight(ModerationActionService.Action action) {
+        var decision = ModerationActionService.execute(plugin, viewer, target, action);
+        if (decision.allowed()) return true;
+        viewer.sendMessage(plugin.getLocalizationManager().format("messages.action-denied",
+                "&cДействие запрещено: %reason%", "reason", decision.reason()));
+        return false;
+    }
+
+    private ActionReceiptManager receipts() {
+        return ActionReceiptManager.forPlugin(plugin);
+    }
+
     private void handleWarnList() {
         if (!viewer.hasPermission("amgui.warn")) return;
-        List<WarnManager.WarnEntry> warns = plugin.getWarnManager().getWarns(target.getUniqueId());
-        if (warns.isEmpty()) {
-            viewer.sendMessage("§eУ игрока " + target.getName() + " нет варнов.");
-            return;
-        }
-        viewer.sendMessage("§8[§cAM§8] §7Варны игрока §f" + target.getName() + ":");
-        for (int i = 0; i < warns.size(); i++) {
-            WarnManager.WarnEntry w = warns.get(i);
-            viewer.sendMessage(" §c#" + (i + 1) + " §7" + w.reason() + " §8(§7" + w.moderator() + "§8) §8" + TimeUtils.formatDuration((System.currentTimeMillis() - w.timestamp()) / 1000) + " назад");
-        }
+        new WarnListGUI(plugin, viewer, target).open();
     }
 
     private void handleNotes() {
@@ -751,6 +1249,7 @@ public class PlayerCardGUI extends PaginatedGUI {
             String text = input.trim();
             if (text.isEmpty()) { viewer.sendMessage("§cТекст заметки не может быть пустым."); return; }
             plugin.getPlayerNoteManager().addNote(target.getUniqueId(), target.getName() != null ? target.getName() : "?", viewer.getName(), text);
+            plugin.getAuditManager().record(viewer, "note.add", target.getName(), target.getUniqueId(), text);
             SoundUtil.success(viewer);
             viewer.sendMessage("§a✓ Заметка добавлена.");
             new PlayerCardGUI(plugin, viewer, target).open();
@@ -758,18 +1257,20 @@ public class PlayerCardGUI extends PaginatedGUI {
     }
 
     private void handleIpInfo() {
-        if (!viewer.hasPermission("amgui.viewip")) return;
-        Map<String, long[]> ipData = plugin.getAltDetector().getIpData(target.getUniqueId());
-        if (ipData.isEmpty()) {
-            viewer.sendMessage("§eНет данных по IP для " + target.getName());
+        if (!viewer.hasPermission("amgui.geoip") || !viewer.hasPermission("amgui.viewip")) {
+            viewer.sendMessage(plugin.getConfigManager().getMessage("no-permission"));
             return;
         }
-        viewer.sendMessage("§8[§cAM§8] §7IP адреса §f" + target.getName() + ":");
-        for (Map.Entry<String, long[]> e : ipData.entrySet()) {
-            String ip = e.getKey();
-            long[] times = e.getValue();
-            viewer.sendMessage(" §8- §c" + ip + " §8(" + TimeUtils.formatLogTime(times[0]) + " — " + TimeUtils.formatLogTime(times[1]) + ")");
+        if (!canAct("view-ip")) return;
+        String ip = "";
+        Player online = target.isOnline() ? target.getPlayer() : null;
+        if (online != null && online.getAddress() != null) ip = online.getAddress().getAddress().getHostAddress();
+        if (ip.isBlank()) ip = plugin.getAltDetector().getLastIp(target.getUniqueId());
+        if (ip.isBlank()) {
+            viewer.sendMessage("§eНет IP-данных для " + target.getName());
+            return;
         }
+        new GeoIpGUI(plugin, viewer, ip, target).open();
     }
 
     private void handleSnapshots() {
@@ -798,7 +1299,6 @@ public class PlayerCardGUI extends PaginatedGUI {
 
     @Override
     public void refresh() {
-        viewer.openInventory(buildInventory());
-        plugin.getGuiManager().register(viewer.getUniqueId(), this);
+        super.refresh();
     }
 }

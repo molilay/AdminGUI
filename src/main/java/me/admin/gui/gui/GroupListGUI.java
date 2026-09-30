@@ -3,13 +3,17 @@ package me.admin.gui.gui;
 import me.admin.gui.AdvancedModeratorGUI;
 import me.admin.gui.utils.ItemBuilder;
 import net.luckperms.api.model.group.Group;
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.List;
 
 public class GroupListGUI extends PaginatedGUI {
+
+    private static final int SLOT_CREATE_GROUP = 46;
 
     public GroupListGUI(AdvancedModeratorGUI plugin, Player viewer) {
         super(plugin, viewer);
@@ -28,12 +32,25 @@ public class GroupListGUI extends PaginatedGUI {
         for (Group group : groups) {
             contentItems.add(buildGroupItem(group));
         }
+    }
 
-        contentItems.add(new ItemBuilder(Material.EMERALD_BLOCK)
-                .name("&a+ Создать группу")
+    @Override
+    protected Inventory buildInventory() {
+        buildContent();
+        Inventory inv = super.buildInventory();
+
+        inv.setItem(SLOT_CREATE_GROUP, new ItemBuilder(Material.EMERALD_BLOCK)
+                .name("&a&l+ Создать группу")
                 .lore("&7Создать новую группу LuckPerms")
                 .glowing()
                 .build());
+
+        for (int i = 45; i < SIZE; i++) {
+            if (inv.getItem(i) == null) {
+                inv.setItem(i, ItemBuilder.createFiller());
+            }
+        }
+        return inv;
     }
 
     private ItemStack buildGroupItem(Group group) {
@@ -64,7 +81,15 @@ public class GroupListGUI extends PaginatedGUI {
     @Override
     public void onClick(int slot) {
         if (slot >= 45) {
-            if (slot == PaginatedGUI.SLOT_CLOSE) {
+            if (slot == SLOT_CREATE_GROUP) {
+                if (!viewer.hasPermission("amgui.groups.edit")) {
+                    viewer.sendMessage(plugin.getConfigManager().getMessage("no-permission"));
+                    return;
+                }
+                createNewGroup();
+                return;
+            }
+            if (slot == SLOT_CLOSE) {
                 close();
                 return;
             }
@@ -81,26 +106,21 @@ public class GroupListGUI extends PaginatedGUI {
                 return;
             }
             new GroupEditorGUI(plugin, viewer, groups.get(index)).open();
-        } else if (index == groups.size()) {
-            if (!viewer.hasPermission("amgui.groups.edit")) {
-                viewer.sendMessage(plugin.getConfigManager().getMessage("no-permission"));
-                return;
-            }
-            createNewGroup();
         }
     }
 
     private void createNewGroup() {
         viewer.closeInventory();
-        plugin.getChatInputManager().awaitInput(viewer, plugin.getConfigManager().getMessage("custom-reason-prompt"), input -> {
-            if (input.isEmpty()) {
+        plugin.getChatInputManager().awaitInput(viewer, "§eВведите название новой группы:", input -> {
+            String name = input.trim();
+            if (name.isEmpty()) {
                 viewer.sendMessage("§cНазвание группы не может быть пустым.");
                 open();
                 return;
             }
-            plugin.getLuckPermsIntegration().createGroup(input).thenAccept(group -> {
+            plugin.getLuckPermsIntegration().createGroup(name).thenAccept(group -> {
                 plugin.getServer().getScheduler().runTask(plugin, () -> {
-                    viewer.sendMessage(plugin.getConfigManager().getFormattedMessage("group-created", "group", input));
+                    viewer.sendMessage(plugin.getConfigManager().getFormattedMessage("group-created", "group", name));
                     new GroupEditorGUI(plugin, viewer, group).open();
                 });
             });

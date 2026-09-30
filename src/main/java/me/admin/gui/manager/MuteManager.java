@@ -7,7 +7,6 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -16,46 +15,71 @@ public class MuteManager {
     private final AdvancedModeratorGUI plugin;
     private final Map<UUID, MuteEntry> muted = new ConcurrentHashMap<>();
     private final File muteFile;
+    private final YamlPersistenceService persistence;
 
     public MuteManager(AdvancedModeratorGUI plugin) {
         this.plugin = plugin;
         this.muteFile = new File(plugin.getDataFolder(), "mutes.yml");
+        this.persistence = YamlPersistenceService.forPlugin(plugin);
         loadMutes();
     }
 
     public void mute(Player target, String reason, String moderator, long durationSec) {
         long expires = durationSec > 0 ? System.currentTimeMillis() + (durationSec * 1000) : -1;
-        muted.put(target.getUniqueId(), new MuteEntry(reason, moderator, expires));
+        synchronized (muted) { muted.put(target.getUniqueId(), new MuteEntry(reason, moderator, expires, target.getName())); }
         target.sendMessage("§cВы замьючены. Причина: " + reason +
                 (durationSec > 0 ? " (" + formatDuration(durationSec) + ")" : " (навсегда)"));
         plugin.getDatabaseManager().logPunishment("mute", moderator, target.getName(), reason, durationSec);
+
+        Player staff = Bukkit.getPlayerExact(moderator);
+        if (staff != null) {
+            plugin.getConfigManager().sendPunishmentTitle(staff, "mute", target.getName());
+            plugin.getConfigManager().playPunishmentSound(staff, "mute");
+        }
+
+        if (target.hasPermission("amgui.staffchat")) {
+            String msg = "§8[§c⚠§8] §f" + moderator + " §cнаказал сотрудника §f" + target.getName();
+            Bukkit.getOnlinePlayers().stream()
+                .filter(p -> p.hasPermission("amgui.admin"))
+                .forEach(p -> p.sendMessage(msg));
+            plugin.getDatabaseManager().logPunishment("staffpunish-mute", moderator, target.getName(), reason, durationSec);
+        }
+
         saveMutes();
     }
 
     public void unmute(UUID uuid) {
-        muted.remove(uuid);
+        synchronized (muted) { muted.remove(uuid); }
         saveMutes();
     }
 
     public boolean isMuted(UUID uuid) {
-        MuteEntry entry = muted.get(uuid);
-        if (entry == null) return false;
-        if (entry.expires > 0 && System.currentTimeMillis() > entry.expires) {
-            muted.remove(uuid);
-            saveMutes();
-            return false;
+        MuteEntry entry;
+        boolean expired = false;
+        synchronized (muted) {
+            entry = muted.get(uuid);
+            if (entry != null && entry.expires > 0 && System.currentTimeMillis() > entry.expires) {
+                muted.remove(uuid);
+                entry = null;
+                expired = true;
+            }
         }
-        return true;
+        if (expired) saveMutes();
+        return entry != null;
     }
 
     public MuteEntry getMute(UUID uuid) {
-        MuteEntry entry = muted.get(uuid);
-        if (entry == null) return null;
-        if (entry.expires > 0 && System.currentTimeMillis() > entry.expires) {
-            muted.remove(uuid);
-            saveMutes();
-            return null;
+        MuteEntry entry;
+        boolean expired = false;
+        synchronized (muted) {
+            entry = muted.get(uuid);
+            if (entry != null && entry.expires > 0 && System.currentTimeMillis() > entry.expires) {
+                muted.remove(uuid);
+                entry = null;
+                expired = true;
+            }
         }
+        if (expired) saveMutes();
         return entry;
     }
 
@@ -72,9 +96,19 @@ public class MuteManager {
     }
 
     public void checkExpirations() {
+        boolean changed = false;
         long now = System.currentTimeMillis();
-        muted.entrySet().removeIf(e -> e.getValue().expires > 0 && now > e.getValue().expires);
-        saveMutes();
+        synchronized (muted) {
+            var it = muted.entrySet().iterator();
+            while (it.hasNext()) {
+                MuteEntry entry = it.next().getValue();
+                if (entry.expires > 0 && now > entry.expires) {
+                    it.remove();
+                    changed = true;
+                }
+            }
+        }
+        if (changed) saveMutes();
     }
 
     private void loadMutes() {
@@ -86,28 +120,46 @@ public class MuteManager {
                 String reason = config.getString(key + ".reason", "");
                 String moderator = config.getString(key + ".moderator", "");
                 long expires = config.getLong(key + ".expires", -1);
-                muted.put(uuid, new MuteEntry(reason, moderator, expires));
+                    String targetName = config.getString(key + ".targetName", "");
+                    muted.put(uuid, new MuteEntry(reason, moderator, expires, targetName));
             } catch (IllegalArgumentException ignored) {}
         }
     }
 
     private void saveMutes() {
-        YamlConfiguration config = new YamlConfiguration();
-        for (Map.Entry<UUID, MuteEntry> e : muted.entrySet()) {
-            config.set(e.getKey().toString() + ".reason", e.getValue().reason);
-            config.set(e.getKey().toString() + ".moderator", e.getValue().moderator);
-            config.set(e.getKey().toString() + ".expires", e.getValue().expires);
+        String snapshot;
+        synchronized (muted) {
+            YamlConfiguration config = new YamlConfiguration();
+            for (Map.Entry<UUID, MuteEntry> e : muted.entrySet()) {
+                config.set(e.getKey().toString() + ".reason", e.getValue().reason);
+                config.set(e.getKey().toString() + ".moderator", e.getValue().moderator);
+                config.set(e.getKey().toString() + ".expires", e.getValue().expires);
+                config.set(e.getKey().toString() + ".targetName", e.getValue().targetName);
+            }
+            snapshot = config.saveToString();
         }
-        try {
-            config.save(muteFile);
-        } catch (IOException ex) {
-            plugin.getLogger().warning("Failed to save mutes: " + ex.getMessage());
-        }
+        if (!persistence.save(muteFile.toPath(), snapshot))
+            plugin.getLogger().warning("Failed to enqueue mutes.yml save");
     }
 
     private String formatDuration(long sec) {
         return TimeUtils.formatDuration(sec);
     }
 
-    public record MuteEntry(String reason, String moderator, long expires) {}
+    public Map<UUID, MuteEntry> getMutedEntries() {
+        boolean changed;
+        Map<UUID, MuteEntry> snapshot;
+        synchronized (muted) {
+            long now = System.currentTimeMillis();
+            changed = muted.entrySet().removeIf(e -> e.getValue().expires > 0 && now > e.getValue().expires);
+            snapshot = new java.util.HashMap<>(muted);
+        }
+        if (changed) saveMutes();
+        return snapshot;
+    }
+
+    /** Flushes all plugin YAML snapshots, including mutes, before shutdown/backup. */
+    public void flush() { persistence.flush(); }
+
+    public record MuteEntry(String reason, String moderator, long expires, String targetName) {}
 }

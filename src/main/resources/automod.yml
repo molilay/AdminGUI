@@ -1,0 +1,223 @@
+# ═══════════════════════════════════════════════════════════════
+# AutoMod — автоматическая модерация чата
+# Все правила настраиваются ниже.
+# ═══════════════════════════════════════════════════════════════
+
+settings:
+  # Проверять обычный чат
+  check-chat: true
+  # Проверять команды (например /msg, /tell)
+  check-commands: false
+  # Проверять таблички (SignChangeEvent)
+  check-signs: false
+  # Иммунитет (право)
+  bypass-permission: "amgui.automod.bypass"
+  # Уведомлять персонал в чат о срабатываниях
+  notify-staff: true
+  # Только фиксировать нарушения, не применять наказания
+  monitor-mode: false
+  # Нормализация Unicode, цифр-замен и разрывов между буквами
+  normalize-text: true
+  # Сводить похожие кириллические/латинские символы (мyдaк -> мудак)
+  fold-homoglyphs: true
+  # Ограничение анализируемой части сообщения защищает regex от слишком больших входов
+  max-message-length: 512
+  allowed-domains:
+    - "example.org"
+  allowed-words: []
+  ignored-worlds: []
+  # Команды, которые AutoMod не должен анализировать. Парольные команды исключены всегда.
+  ignored-commands:
+    - "login"
+    - "register"
+    - "changepassword"
+  # Автоматическая эскалация выключена по умолчанию. Формат: число:ДЕЙСТВИЕ:секунды
+  escalation:
+    enabled: false
+    window-seconds: 3600
+    steps:
+      - "3:MUTE:600"
+      - "5:KICK:0"
+      - "7:TEMPBAN:86400"
+  feedback:
+    keep-last: 200
+  limits:
+    max-rules: 128
+  regex:
+    max-patterns-per-rule: 16
+    max-pattern-length: 192
+    budget-micros: 2500
+  safety:
+    # BAN/TEMPBAN никогда не выполняются автоматически: они попадают в очередь одобрения.
+    max-automatic-mute-seconds: 3600
+    pending-mute-seconds: 300
+  approval:
+    expire-seconds: 86400
+    max-pending: 500
+    default-tempban-seconds: 86400
+
+# ═══════════════════════════════════════════════════════════════
+# ПРАВИЛА
+# ═══════════════════════════════════════════════════════════════
+#
+# Доступные действия (action):
+#   WARN    — предупреждение (авто-бан при превышении лимита)
+#   MUTE    — заглушить чат (навсегда или на duration секунд)
+#   KICK    — кикнуть
+#   BAN     — перманентный бан
+#   TEMPBAN — временный бан (на duration секунд)
+#
+# При WARN/MUTE — duration указывается в секундах.
+#   3600 = 1 час, 86400 = 1 день, 2592000 = 30 дней
+#   0 = навсегда (бессрочно)
+#
+# warns  — сколько варнов дать при нарушении
+# fine   — штраф через Vault (0.0 = без штрафа)
+# message — сообщение нарушителю (поддерживается &)
+# group  — назначить группу LuckPerms при нарушении (например: muted)
+#          Если не указано или пусто — группа не назначается
+#
+# ═══════════════════════════════════════════════════════════════
+
+rules:
+
+  # ───────── МАТ ─────────
+  # Блокирует сообщения, содержащие слова из списка triggers
+  swearing:
+    enabled: true
+    name: "Мат"
+    triggers:
+      - "хуй"
+      - "хуя"
+      - "хуе"
+      - "пизд"
+      - "бля"
+      - "блять"
+      - "ебал"
+      - "ебать"
+      - "нахуй"
+      - "похуй"
+      - "пидор"
+      - "петух"
+      - "гандон"
+      - "мудак"
+      - "сосать"
+      - "шлюха"
+      - "залупа"
+      - "елда"
+      - "дрочи"
+      - "уебок"
+      - "ахуе"
+      - "охуе"
+      - "выеб"
+      - "разъеб"
+      - "заеб"
+      - "доеб"
+      - "поеб"
+      - "приеб"
+      - "съеб"
+      - "отъеб"
+      - "подъеб"
+      - "наеб"
+      - "наеба"
+      - "объеб"
+      - "проеб"
+      - "проёб"
+      - "распизд"
+      - "срака"
+      - "ссать"
+      - "зассан"
+      - "засра"
+      - "засру"
+      - "засер"
+      - "нассал"
+      - "писю"
+      - "письк"
+      - "писюн"
+      - "жопа"
+      - "жопн"
+      - "очко"
+    action: MUTE
+    duration: 3600
+    reason: "Мат в чате"
+    warns: 1
+    message: "&cНе материтесь в чате!"
+    fine: 0.0
+    group: ""
+    cooldown-seconds: 5
+
+  # ───────── КАПС ─────────
+  # Блокирует сообщения, где > caps-percent% букв — заглавные
+  caps:
+    enabled: true
+    name: "Капс"
+    min-length: 5
+    caps-percent: 65
+    action: WARN
+    duration: 0
+    reason: "Капс"
+    warns: 1
+    message: "&cНе пишите КАПСОМ!"
+    fine: 0.0
+    cooldown-seconds: 5
+
+  # ───────── СПАМ ─────────
+  # messages сообщений за seconds секунд = спам
+  spam:
+    enabled: true
+    name: "Спам"
+    messages: 4
+    seconds: 5
+    action: MUTE
+    duration: 600
+    reason: "Спам в чате"
+    warns: 1
+    message: "&cНе спамьте! Подождите между сообщениями."
+    fine: 0.0
+    cooldown-seconds: 10
+
+  # ───────── РЕКЛАМА ─────────
+  # Блокирует ссылки, дискорд-приглашения, домены
+  # patterns — список regex-шаблонов
+  advertising:
+    enabled: true
+    name: "Реклама"
+    patterns:
+      - "(?:https?://|www\\.)\\S+"
+      - "(?:discord\\.gg|discordapp\\.com/invite)/\\S+"
+      - "\\b(?:\\w+\\.)+(?:ru|com|net|org|xyz|me|su|tk|ml|ga|cf|gq)\\b"
+    action: KICK
+    duration: 0
+    reason: "Реклама"
+    warns: 2
+    message: "&cРеклама запрещена!"
+    fine: 0.0
+    cooldown-seconds: 10
+
+  # ───────── ФЛУД ─────────
+  # Повтор одного и того же символа char-repeat+ раз подряд
+  flood:
+    enabled: true
+    name: "Флуд"
+    char-repeat: 5
+    action: KICK
+    duration: 0
+    reason: "Флуд в чате"
+    warns: 1
+    message: "&cНе флудите!"
+    fine: 0.0
+    cooldown-seconds: 10
+
+  # ───────── ПОВТОР СООБЩЕНИЙ ─────────
+  # Повторение одного и того же сообщения подряд
+  repeated-message:
+    enabled: true
+    name: "Повтор сообщений"
+    repeat-count: 3
+    action: MUTE
+    duration: 300
+    reason: "Повтор сообщений"
+    warns: 1
+    message: "&cНе повторяйте одно и то же!"
+    fine: 0.0
+    cooldown-seconds: 10

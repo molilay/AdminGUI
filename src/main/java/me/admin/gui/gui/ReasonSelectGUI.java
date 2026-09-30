@@ -35,10 +35,12 @@ public class ReasonSelectGUI {
         int size = Math.max(27, Math.min(calculatedSize, 54));
 
         Inventory inv = Bukkit.createInventory(null, size,
-                plugin.getConfigManager().getGuiTitle("title-reason"));
+                me.admin.gui.utils.TextUtil.legacy(plugin.getConfigManager().getGuiTitle("title-reason")));
 
+        int maxReasons = size - 2; // leave last slot for custom reason button
         int slot = 0;
         for (String reason : reasons) {
+            if (slot >= maxReasons) break;
             inv.setItem(slot++, new ItemBuilder(Material.PAPER)
                     .name("&e" + reason)
                     .lore("&7Нажмите, чтобы выбрать")
@@ -50,8 +52,7 @@ public class ReasonSelectGUI {
                 .lore("&7Введите свою причину")
                 .build());
 
-        viewer.openInventory(inv);
-        plugin.getGuiManager().register(viewer.getUniqueId(), new PaginatedGUI(plugin, viewer) {
+        PaginatedGUI menu = new PaginatedGUI(plugin, viewer) {
             @Override public String getTitle() { return plugin.getConfigManager().getGuiTitle("title-reason"); }
             @Override public void buildContent() {}
             @Override
@@ -70,6 +71,7 @@ public class ReasonSelectGUI {
                     callback.accept(input);
                 });
             }
-        });
+        };
+        plugin.getGuiManager().open(viewer, menu, inv, true);
     }
 }

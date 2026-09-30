@@ -13,6 +13,7 @@ public class ChatInputManager {
 
     public void awaitInput(Player player, String prompt, Consumer<String> callback) {
         synchronized (pendingInputs) {
+            purgeExpired();
             pendingInputs.put(player.getUniqueId(), new PendingInput(callback, System.currentTimeMillis()));
         }
         player.sendMessage(prompt);
@@ -35,6 +36,19 @@ public class ChatInputManager {
         }
     }
 
+    public void cancel(UUID playerId) {
+        synchronized (pendingInputs) {
+            pendingInputs.remove(playerId);
+        }
+    }
+
+    public int pendingCount() {
+        synchronized (pendingInputs) {
+            purgeExpired();
+            return pendingInputs.size();
+        }
+    }
+
     public void handleInput(Player player, String message) {
         PendingInput input;
         synchronized (pendingInputs) {
@@ -43,6 +57,11 @@ public class ChatInputManager {
         if (input != null) {
             input.callback.accept(message);
         }
+    }
+
+    private void purgeExpired() {
+        long cutoff = System.currentTimeMillis() - 30000L;
+        pendingInputs.entrySet().removeIf(entry -> entry.getValue().timestamp < cutoff);
     }
 
     private record PendingInput(Consumer<String> callback, long timestamp) {}

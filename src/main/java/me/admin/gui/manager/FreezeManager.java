@@ -36,8 +36,21 @@ public class FreezeManager {
         if (plugin.getConfigManager().isFreezeSlow()) {
             player.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, -1, 255, false, false));
         }
-        player.sendTitle("§c❄ ЗАМОРОЖЕН", "§7Напишите модераторам в ЛС", 10, 999999, 10);
+        player.showTitle(net.kyori.adventure.title.Title.title(
+                net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacySection().deserialize("§c❄ ЗАМОРОЖЕН"),
+                net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacySection().deserialize("§7Напишите модераторам в ЛС"),
+                net.kyori.adventure.title.Title.Times.times(
+                        java.time.Duration.ofMillis(500),
+                        java.time.Duration.ofMillis(999999 * 50L),
+                        java.time.Duration.ofMillis(500)
+                )));
         player.sendMessage(plugin.getConfigManager().getMessage("frozen"));
+        Bukkit.getOnlinePlayers().stream()
+            .filter(p -> p.hasPermission("amgui.staffchat") && p.hasPermission("amgui.freeze"))
+            .forEach(p -> {
+                plugin.getConfigManager().sendPunishmentTitle(p, "freeze", player.getName());
+                plugin.getConfigManager().playPunishmentSound(p, "freeze");
+            });
         saveFrozenPlayers();
     }
 
@@ -49,6 +62,12 @@ public class FreezeManager {
         player.removePotionEffect(PotionEffectType.SLOWNESS);
         player.resetTitle();
         player.sendMessage(plugin.getConfigManager().getMessage("unfrozen"));
+        Bukkit.getOnlinePlayers().stream()
+            .filter(p -> p.hasPermission("amgui.staffchat") && p.hasPermission("amgui.freeze"))
+            .forEach(p -> {
+                plugin.getConfigManager().sendPunishmentTitle(p, "unfreeze", player.getName());
+                plugin.getConfigManager().playPunishmentSound(p, "unfreeze");
+            });
         saveFrozenPlayers();
     }
 
@@ -86,11 +105,7 @@ public class FreezeManager {
         for (UUID id : frozenPlayers) {
             config.set(id.toString(), true);
         }
-        try {
-            config.save(frozenFile);
-        } catch (IOException e) {
-            plugin.getLogger().warning("Failed to save frozen players: " + e.getMessage());
-        }
+        YamlPersistenceService.queueYaml(plugin, frozenFile, config, "frozen players");
     }
 
     public void loadFrozenPlayers() {

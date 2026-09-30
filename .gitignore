@@ -1,0 +1,15 @@
+target/
+*.class
+*.log
+*.db
+*.jar
+dependency-reduced-pom.xml
+.settings/
+.project
+.classpath
+bin/
+.idea/
+*.iml
+
+# Локальные архивы исходников
+*.zip
